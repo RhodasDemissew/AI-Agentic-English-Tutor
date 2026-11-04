@@ -9,7 +9,7 @@ def table(name, fields, indexes=[]):
   a=dict(NAME=name,TYPE=typ,NOTNULL='true',SEQUENCE='false')
   if typ=='int': a['LENGTH']='10'
   if typ=='char': a['LENGTH']='255'
-  if default is not None: a['DEFAULT']=str(default)
+  if default is not None and not (typ == 'char' and default == ''): a['DEFAULT']=str(default)
   E.SubElement(fs,'FIELD',**a)
  ks=E.SubElement(t,'KEYS'); E.SubElement(ks,'KEY',NAME='primary',TYPE='primary',FIELDS='id')
  if indexes:

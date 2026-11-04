@@ -18,7 +18,7 @@ services:
     ports:
       - '127.0.0.1:8088:80'
     volumes:
-      - ./.local/moodle:/var/www/html
+      - moodlecode:/var/www/html
       - ./aienglishlesson:/var/www/html/mod/aienglishlesson
       - ./dev:/opt/aiel-dev:ro
       - moodledata:/var/moodledata
@@ -30,7 +30,7 @@ services:
     user: www-data
     command: [sh, -c, 'while true; do php /var/www/html/admin/cli/cron.php; sleep 60; done']
     volumes:
-      - ./.local/moodle:/var/www/html
+      - moodlecode:/var/www/html
       - ./aienglishlesson:/var/www/html/mod/aienglishlesson
       - moodledata:/var/moodledata
     depends_on:
@@ -38,3 +38,4 @@ services:
 volumes:
   db:
   moodledata:
+  moodlecode:

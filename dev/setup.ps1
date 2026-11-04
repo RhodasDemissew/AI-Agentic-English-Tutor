@@ -5,6 +5,11 @@ if (!(Test-Path '.local/moodle/version.php')) {
     if ($LASTEXITCODE) { throw 'Moodle download failed' }
 }
 if (!(Test-Path '.local/moodle/config.php')) { Copy-Item dev/config.php .local/moodle/config.php }
+python dev/prepare_source.py
+if ($LASTEXITCODE) { throw 'Source archive preparation failed' }
+docker compose build web
+docker compose run --rm --no-deps web tar xf /opt/aiel-dev/moodle-source.tar -C /var/www/html
+if ($LASTEXITCODE) { throw 'Source volume initialization failed' }
 docker compose up -d --build web
 if ($LASTEXITCODE) { throw 'Docker startup failed' }
 docker compose exec -T web chown www-data:www-data /var/moodledata

@@ -7,7 +7,7 @@ if ($ADMIN->fulltree) {
     foreach (['eligible', 'freeonly'] as $key) {
         $settings->add(new admin_setting_configcheckbox('aienglishlesson/' . $key, get_string($key, 'aienglishlesson'), get_string($key . '_desc', 'aienglishlesson'), 0));
     }
-    $settings->add(new admin_setting_configpasswordunmask('aienglishlesson/apikey', get_string('apikey', 'aienglishlesson'), get_string('apikey_desc', 'aienglishlesson'), ''));
+    $settings->add(new \mod_aienglishlesson\admin_setting_apikey('aienglishlesson/apikey', get_string('apikey', 'aienglishlesson'), get_string('apikey_desc', 'aienglishlesson'), ''));
     foreach (['model' => 'gemini-3.5-flash-lite', 'timeout' => 120, 'dailycalls' => 10, 'maxmb' => 10, 'maxpages' => 100, 'pdfinfo' => '/usr/bin/pdfinfo'] as $key => $default) {
         $settings->add(new admin_setting_configtext('aienglishlesson/' . $key, get_string($key, 'aienglishlesson'), '', $default,
             is_int($default) ? PARAM_INT : PARAM_TEXT));

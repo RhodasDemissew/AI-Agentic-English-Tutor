@@ -2,3 +2,5 @@
 .env
 dist/*.zip
 __pycache__/
+dev/moodle-source.tar
+dev/moodle-source.new.tar

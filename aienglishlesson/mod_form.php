@@ -5,7 +5,7 @@ class mod_aienglishlesson_mod_form extends moodleform_mod {
     public function definition() {
         $mform = $this->_form;
         $mform->addElement('header', 'general', get_string('general', 'form'));
-        $mform->addElement('text', 'name', get_string('name'), ['size' => 64]);
+        $mform->addElement('text', 'name', get_string('name'), ['size' => 64, 'maxlength' => 255]);
         $mform->setType('name', PARAM_TEXT);
         $mform->addRule('name', null, 'required', null, 'client');
         $this->standard_intro_elements();
@@ -34,6 +34,9 @@ class mod_aienglishlesson_mod_form extends moodleform_mod {
     }
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
+        foreach (['name', 'topic'] as $field) {
+            if (\core_text::strlen($data[$field]) > 255) { $errors[$field] = get_string('maximumchars', '', 255); }
+        }
         if ($data['duration'] < 5 || $data['duration'] > 180) { $errors['duration'] = get_string('durationerror', 'aienglishlesson'); }
         if ($data['pagerange'] && !preg_match('/^[1-9][0-9]{0,3}(-[1-9][0-9]{0,3})?$/D', $data['pagerange'])) {
             $errors['pagerange'] = get_string('rangeerror', 'aienglishlesson');

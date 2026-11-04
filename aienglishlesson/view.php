@@ -18,6 +18,7 @@ if ($versionid) { $conditions['id'] = $versionid; }
 else { $conditions['status'] = 'published'; }
 $versions = $DB->get_records('aiel_versions', $conditions, 'id DESC', '*', 0, 1);
 $version = $versions ? reset($versions) : false;
+if ($version && $version->status === 'published') { (new completion_info($course))->set_module_viewed($cm); }
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($activity->name));
 if ($manage) {
@@ -26,7 +27,14 @@ if ($manage) {
     $jobs = $DB->get_records('aiel_jobs', ['lessonid' => $activity->id], 'id DESC', '*', 0, 1);
     if ($jobs) {
         $job = reset($jobs);
-        echo html_writer::div(get_string('jobstatus', 'aienglishlesson', (object)['status' => $job->status, 'attempts' => $job->attempts, 'diagnostic' => $job->diagnostic]), 'alert alert-info');
+        $diagnostic = $job->diagnostic;
+        $key = 'diagnostic_' . $diagnostic;
+        if ($diagnostic && get_string_manager()->string_exists($key, 'aienglishlesson')) {
+            $diagnostic = get_string($key, 'aienglishlesson');
+        } else if ($diagnostic && get_string_manager()->string_exists($diagnostic, 'aienglishlesson')) {
+            $diagnostic = get_string($diagnostic, 'aienglishlesson');
+        }
+        echo html_writer::div(s(get_string('jobstatus', 'aienglishlesson', (object)['status' => $job->status, 'attempts' => $job->attempts, 'diagnostic' => $diagnostic])), 'alert alert-info');
     }
     $files = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'source', 0, 'id', false);
     foreach ($files as $file) {
@@ -38,7 +46,7 @@ if ($manage) {
     }
     if ($version && $version->status === 'draft') {
         echo html_writer::link(new moodle_url('/mod/aienglishlesson/edit.php', ['id' => $id, 'version' => $version->id]), get_string('editdraft', 'aienglishlesson'), ['class' => 'btn btn-secondary my-2']);
-        echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'version' => $version->id, 'action' => 'publish']), get_string('publish', 'aienglishlesson'), 'post');
+        echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'version' => $version->id, 'modified' => $version->timemodified, 'action' => 'publish']), get_string('publish', 'aienglishlesson'), 'post');
     }
 }
 if (!$version) { echo $OUTPUT->notification(get_string('nopublished', 'aienglishlesson'), 'info'); }
@@ -66,6 +74,5 @@ else {
         }
     }
     echo $OUTPUT->render_from_template('mod_aienglishlesson/lesson', $data);
-    if ($version->status === 'published') { (new completion_info($course))->set_module_viewed($cm); }
 }
 echo $OUTPUT->footer();

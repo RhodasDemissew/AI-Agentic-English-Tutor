@@ -25,6 +25,8 @@ function aienglishlesson_update_instance($data, $mform = null) {
     return true;
 }
 function aienglishlesson_save_pdf($data) {
+    global $CFG;
+    require_once($CFG->libdir . '/filelib.php');
     if (isset($data->sourcepdf)) {
         $context = context_module::instance($data->coursemodule);
         file_save_draft_area_files($data->sourcepdf, $context->id, 'mod_aienglishlesson', 'source', 0,

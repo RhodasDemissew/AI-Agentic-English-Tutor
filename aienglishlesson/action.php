@@ -21,6 +21,7 @@ if ($action === 'generate') {
     if (!$lock) { throw new moodle_exception('busy', 'aienglishlesson'); }
     try {
         $v = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance, 'status' => 'draft'], '*', MUST_EXIST);
+        if ($v->timemodified != required_param('modified', PARAM_INT)) { throw new moodle_exception('editconflict', 'aienglishlesson'); }
         \mod_aienglishlesson\local\lesson::validate($v->content);
         $tx = $DB->start_delegated_transaction();
         $DB->set_field('aiel_versions', 'status', 'draft', ['lessonid' => $cm->instance, 'status' => 'published']);

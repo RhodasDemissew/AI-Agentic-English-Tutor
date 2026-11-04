@@ -51,6 +51,7 @@ foreach (\mod_aienglishlesson\local\lesson::KINDS as $kind) {
         'cards' => [['term' => 'please', 'meaning' => 'A polite request word', 'example' => 'Two apples, please.']]];
 }
 $content = \mod_aienglishlesson\local\lesson::validate(json_encode($content));
+$content['sections'][0]['body'] .= ' <script>alert(1)</script>';
 check(strpos(json_encode(\mod_aienglishlesson\local\lesson::student_data($content)), 'TEACHER-ONLY-SECRET') === false, 'Answer keys removed before student rendering');
 $bad = $content; $bad['sections'][0]['script'] = '<script>alert(1)</script>';
 try { \mod_aienglishlesson\local\lesson::validate(json_encode($bad)); check(false, 'Unknown AI fields rejected'); }

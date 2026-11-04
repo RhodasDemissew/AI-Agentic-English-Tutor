@@ -1,6 +1,11 @@
 <?php
 defined('MOODLE_INTERNAL') || die();
 $string['pluginname'] = 'AI English Lessons';
+$string['diagnostic_configuration'] = 'AI is disabled or incomplete. Ask the administrator to resolve provider eligibility and configure a non-billed development key in the activity plugin settings.';
+$string['diagnostic_transient'] = 'The provider is temporarily unavailable or rate-limited. Moodle retries up to three attempts; after a final failure, wait before generating again.';
+$string['diagnostic_limit'] = 'The local daily request limit was reached. Wait until the rolling 24-hour limit clears.';
+$string['diagnostic_incomplete'] = 'The provider blocked or cut off the response. No partial lesson was saved. Review the source and try a smaller document.';
+$string['diagnostic_internal'] = 'A local processing error occurred. Ask the administrator to check server configuration.';
 $string['modulename'] = 'AI English Lessons';
 $string['modulenameplural'] = 'AI English Lessons';
 $string['pluginadministration'] = 'AI English Lessons administration';

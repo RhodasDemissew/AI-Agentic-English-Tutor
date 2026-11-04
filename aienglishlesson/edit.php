@@ -24,7 +24,9 @@ if ($data = $form->get_data()) {
         $current = $DB->get_record('aiel_versions', ['id' => $versionid, 'status' => 'draft'], '*', MUST_EXIST);
         if ($current->timemodified != $data->modified) { throw new moodle_exception('editconflict', 'aienglishlesson'); }
         $content['title'] = $data->title;
+        $content['focus'] = $data->focus;
         foreach ($content['sections'] as $i => &$section) {
+            $section['origin'] = $data->{'origin_' . $i};
             foreach (['title', 'body', 'example', 'practice', 'answer'] as $key) { $section[$key] = $data->{$key . '_' . $i}; }
             foreach ($section['cards'] as $j => &$card) {
                 foreach (['term', 'meaning', 'example'] as $key) { $card[$key] = $data->{'card_' . $i . '_' . $j . '_' . $key}; }

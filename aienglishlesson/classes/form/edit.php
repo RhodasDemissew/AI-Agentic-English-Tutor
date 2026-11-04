@@ -10,8 +10,14 @@ class edit extends \moodleform {
         }
         $f->addElement('text', 'title', get_string('name'), ['size' => 70]); $f->setType('title', PARAM_TEXT);
         $f->addRule('title', null, 'required');
+        $f->addElement('select', 'focus', get_string('focus', 'aienglishlesson'),
+            ['reading' => 'Reading', 'listening' => 'Listening', 'speaking' => 'Speaking', 'writing' => 'Writing']);
+        $f->setDefault('focus', $this->_customdata['content']['focus']);
         foreach ($this->_customdata['content']['sections'] as $i => $section) {
             $f->addElement('header', 'section' . $i, $section['title']);
+            $f->addElement('select', 'origin_' . $i, get_string('origin', 'aienglishlesson'),
+                ['source' => 'Source', 'generated' => 'Generated', 'mixed' => 'Mixed']);
+            $f->setDefault('origin_' . $i, $section['origin']);
             foreach (['title', 'body', 'example', 'practice', 'answer'] as $key) {
                 $f->addElement('textarea', $key . '_' . $i, get_string($key, 'aienglishlesson'), ['rows' => $key === 'body' ? 6 : 3, 'cols' => 80]);
                 $f->setType($key . '_' . $i, PARAM_TEXT);

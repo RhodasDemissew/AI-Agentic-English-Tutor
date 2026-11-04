@@ -30,7 +30,7 @@ class lesson {
         if (empty($data['title']) || !in_array($data['focus'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) ||
                 !is_bool($data['readable'] ?? null)) { $fail(); }
         if (!$data['readable']) { throw new \moodle_exception('unreadablepdf', 'aienglishlesson'); }
-        if (!is_array($data['sections'] ?? null) || count($data['sections']) < 10 || count($data['sections']) > 20) { $fail(); }
+        if (!is_array($data['sections'] ?? null) || !array_is_list($data['sections']) || count($data['sections']) < 10 || count($data['sections']) > 20) { $fail(); }
         $kinds = [];
         foreach ($data['sections'] as $section) {
             if (!is_array($section) || array_diff(array_keys($section), ['kind', 'title', 'body', 'example', 'practice', 'answer', 'origin', 'cards'])) { $fail(); }
@@ -41,7 +41,7 @@ class lesson {
                 $checktext($section[$key] ?? null, $max);
             }
             if (!$section['title'] || !$section['body']) { $fail(); }
-            if (!is_array($section['cards'] ?? null) || count($section['cards']) > 20) { $fail(); }
+            if (!is_array($section['cards'] ?? null) || !array_is_list($section['cards']) || count($section['cards']) > 20) { $fail(); }
             foreach ($section['cards'] as $card) {
                 if (!is_array($card) || array_diff(array_keys($card), ['term', 'meaning', 'example'])) { $fail(); }
                 foreach (['term', 'meaning', 'example'] as $key) { $checktext($card[$key] ?? null, 1000); }
