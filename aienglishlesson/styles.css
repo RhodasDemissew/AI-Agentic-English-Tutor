@@ -1,0 +1,11 @@
+.aiel-layout {display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,3fr);gap:2rem;margin:2rem 0;}
+.aiel-nav {background:#f3f6fa;padding:1.25rem;border-radius:.6rem;align-self:start;}
+.aiel-nav li {margin-bottom:.8rem;}
+.aiel-nav [aria-current] {font-weight:700;text-decoration:underline;}
+.aiel-content {max-width:900px;line-height:1.75;overflow-wrap:anywhere;}
+.aiel-text {white-space:pre-wrap;margin:1rem 0;}
+.aiel-meta {color:#495567;font-size:.9rem;}
+.aiel-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
+.aiel-card,.aiel-example,.aiel-practice {padding:1.25rem;border:1px solid #c7d5df;border-radius:.5rem;margin:1rem 0;}
+.aiel-card {background:#eff8f7;}.aiel-example {border-left:5px solid #327d76;}.aiel-pagination {display:flex;gap:1rem;justify-content:space-between;}
+@media(max-width:700px){.aiel-layout{grid-template-columns:1fr;gap:1rem;}.aiel-nav ol{columns:2;}.aiel-content{font-size:1.05rem;}}

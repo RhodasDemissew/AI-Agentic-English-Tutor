@@ -1,0 +1,40 @@
+name: aienglishlesson-dev
+services:
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_ROOT_PASSWORD: local-root-only
+      MARIADB_DATABASE: moodle
+      MARIADB_USER: moodle
+      MARIADB_PASSWORD: local-moodle-only
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 5s
+      retries: 30
+  web:
+    build: ./dev
+    ports:
+      - '127.0.0.1:8088:80'
+    volumes:
+      - ./.local/moodle:/var/www/html
+      - ./aienglishlesson:/var/www/html/mod/aienglishlesson
+      - ./dev:/opt/aiel-dev:ro
+      - moodledata:/var/moodledata
+    depends_on:
+      db:
+        condition: service_healthy
+  cron:
+    build: ./dev
+    user: www-data
+    command: [sh, -c, 'while true; do php /var/www/html/admin/cli/cron.php; sleep 60; done']
+    volumes:
+      - ./.local/moodle:/var/www/html
+      - ./aienglishlesson:/var/www/html/mod/aienglishlesson
+      - moodledata:/var/moodledata
+    depends_on:
+      - web
+volumes:
+  db:
+  moodledata:

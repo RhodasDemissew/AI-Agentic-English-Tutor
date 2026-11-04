@@ -1,0 +1,18 @@
+<div class="aiel-layout">
+  <nav class="aiel-nav" aria-label="{{#str}}sections, aienglishlesson{{/str}}">
+    <p>{{progress}}</p>
+    <ol>{{#navigation}}<li><a href="{{url}}" {{#current}}aria-current="step"{{/current}}>{{title}}</a> {{#done}}<span aria-label="{{#str}}completed, aienglishlesson{{/str}}">✓</span>{{/done}}</li>{{/navigation}}</ol>
+  </nav>
+  <article class="aiel-content">
+    <p class="aiel-meta">{{#str}}focus, aienglishlesson{{/str}}: {{focus}} · {{#str}}origin, aienglishlesson{{/str}}: {{origin}}</p>
+    <h2>{{title}}</h2>
+    {{#audio}}<p class="alert alert-info">{{#str}}audionotready, aienglishlesson{{/str}}</p>{{/audio}}
+    <div class="aiel-text">{{body}}</div>
+    <div class="aiel-cards">{{#cards}}<section class="aiel-card"><h3>{{term}}</h3><p>{{meaning}}</p><p>{{example}}</p></section>{{/cards}}</div>
+    {{#example}}<section class="aiel-example"><h3>{{#str}}example, aienglishlesson{{/str}}</h3><div class="aiel-text">{{example}}</div></section>{{/example}}
+    {{#practice}}<section class="aiel-practice"><h3>{{#str}}practice, aienglishlesson{{/str}}</h3><div class="aiel-text">{{practice}}</div><p>{{#str}}practiceoffline, aienglishlesson{{/str}}</p></section>{{/practice}}
+    {{#teacher}}{{#answer}}<details><summary>{{#str}}answer, aienglishlesson{{/str}}</summary><div class="aiel-text">{{answer}}</div></details>{{/answer}}{{/teacher}}
+    {{#cansave}}<form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="progress"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-primary my-3" type="submit">{{#str}}markcomplete, aienglishlesson{{/str}}</button></form>{{/cansave}}
+    <div class="aiel-pagination">{{#previous}}<a class="btn btn-outline-secondary" href="{{previous}}">{{#str}}previous, aienglishlesson{{/str}}</a>{{/previous}}{{#next}}<a class="btn btn-outline-secondary" href="{{next}}">{{#str}}next, aienglishlesson{{/str}}</a>{{/next}}</div>
+  </article>
+</div>
