@@ -2,6 +2,15 @@
 namespace mod_aienglishlesson\local;
 defined('MOODLE_INTERNAL') || die();
 class gemini implements provider {
+    /** Persist only numeric transport/status codes, never raw errors or response bodies. */
+    public static function check_response(int $errno, int $status): void {
+        if ($errno) {
+            throw new provider_error('curl' . $errno, !in_array($errno, [3, 43, 48, 58, 60, 77], true));
+        }
+        if ($status !== 200) {
+            throw new provider_error('http' . $status, $status === 0 || $status === 408 || $status === 429 || $status >= 500);
+        }
+    }
     private function config(): \stdClass {
         $c = get_config('aienglishlesson');
         if (($c->provider ?? '') !== 'gemini' || empty($c->eligible) || empty($c->freeonly) || empty($c->apikey) ||
@@ -35,9 +44,9 @@ class gemini implements provider {
         $url = 'https://generativelanguage.googleapis.com/v1beta/' . $path;
         // Never include the key in a URL, error, task custom data, or log.
         $raw = $method === 'GET' ? $curl->get($url, [], $options) : $curl->post($url, json_encode($body), $options);
-        $status = (int)$curl->get_info()['http_code'];
-        if ($curl->get_errno() || $status === 429 || $status >= 500) { throw new provider_error('transient', true); }
-        if ($status !== 200) { throw new provider_error('http' . $status); }
+        $status = (int)($curl->get_info()['http_code'] ?? 0);
+        self::check_response((int)$curl->get_errno(), $status);
+        if (!is_string($raw)) { throw new provider_error('response'); }
         if (strlen($raw) > $maxbytes) { throw new provider_error('response'); }
         $data = json_decode($raw, true);
         if (!is_array($data)) { throw new provider_error('response'); }

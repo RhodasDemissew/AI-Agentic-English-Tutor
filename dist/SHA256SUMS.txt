@@ -1,3 +1,4 @@
 24d2f076af587fb3d8b7e5d7e430d3117ecb6b508195c4308cf8cf2fd73487c3  mod_aienglishlesson-0.3.0.zip
 77413daa305cb9b2a1b0717c8d62c3d223f4cb8e2b95f12f2a2a199d35fc7f10  mod_aienglishlesson-0.2.0.zip
 ca655afd4916ec4cceca29f71441218c707d73559baeb0a0c33a5dad3829468d  ai-english-lessons-demo.mbz
+918c7cb91a237a5ff4e3fe0a1127e495cfee2f8b2fac86cdae9606da3d8694cc  mod_aienglishlesson-0.3.1.zip
