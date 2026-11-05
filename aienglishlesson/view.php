@@ -23,6 +23,10 @@ if ($version && $version->status === 'published') { (new completion_info($course
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($activity->name));
 if ($manage) {
+    if (has_capability('moodle/site:config', context_system::instance())) {
+        echo html_writer::link(new moodle_url('/mod/aienglishlesson/diagnostics.php', ['id' => $id]),
+            get_string('generationdiagnostics', 'aienglishlesson'), ['class' => 'btn btn-secondary mr-2']);
+    }
     echo html_writer::link(new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id]), get_string('reviewresponses', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
     echo $OUTPUT->notification(get_string('reviewwarning', 'aienglishlesson'), 'info');
     echo $OUTPUT->notification(get_string(\mod_aienglishlesson\local\jobs::direct() ? 'directnotice' : 'backgroundnotice', 'aienglishlesson'), 'info');
