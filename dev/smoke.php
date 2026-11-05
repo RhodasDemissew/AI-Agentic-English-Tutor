@@ -48,6 +48,9 @@ foreach (\mod_aienglishlesson\local\lesson::KINDS as $kind) {
     $content['sections'][] = ['kind' => $kind, 'title' => ucfirst($kind), 'body' => 'Learn to ask politely for apples at a market. This is a local test fixture.',
         'example' => 'Customer: May I have two apples, please? Seller: Of course.', 'practice' => 'Ask your partner for three oranges.',
         'answer' => 'TEACHER-ONLY-SECRET: May I have three oranges, please?', 'origin' => 'generated',
+        'feedback' => 'AFTER-SUBMISSION-MODEL: May I have three oranges, please? Check your polite request word.',
+        'hint' => 'Begin with May I have...', 'simpler' => 'Ask politely. Say please.', 'extraexample' => 'May I have a banana, please?',
+        'audioscript' => in_array($kind, ['listening', 'speaking']) ? 'At the market, Ana buys two apples. May I have two apples, please? Of course, says the seller.' : '',
         'cards' => [['term' => 'please', 'meaning' => 'A polite request word', 'example' => 'Two apples, please.']]];
 }
 $content = \mod_aienglishlesson\local\lesson::validate(json_encode($content));

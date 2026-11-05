@@ -6,6 +6,7 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
             new restore_path_element('aiel_version', '/activity/aienglishlesson/versions/version')];
         if ($this->get_setting_value('userinfo')) {
             $paths[] = new restore_path_element('aiel_progress', '/activity/aienglishlesson/progresses/progress');
+            $paths[] = new restore_path_element('aiel_response', '/activity/aienglishlesson/responses/response');
         }
         return $this->prepare_activity_structure($paths);
     }
@@ -22,8 +23,10 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
         $data->lessonid = $this->get_new_parentid('aienglishlesson');
         \mod_aienglishlesson\local\lesson::validate($data->content);
         if (!in_array($data->status, ['draft', 'published'])) { $data->status = 'draft'; }
+        // Task queues are not restored; allow teachers to rebuild interrupted audio.
+        if (empty($data->audiostatus) || in_array($data->audiostatus, ['queued', 'running'])) { $data->audiostatus = 'none'; }
         $id = $DB->insert_record('aiel_versions', $data);
-        $this->set_mapping('aiel_version', $oldid, $id);
+        $this->set_mapping('aiel_version', $oldid, $id, true);
     }
     protected function process_aiel_progress($data) {
         global $DB;
@@ -36,5 +39,18 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
     protected function after_execute() {
         $this->add_related_files('mod_aienglishlesson', 'intro', null);
         $this->add_related_files('mod_aienglishlesson', 'source', null);
+        $this->add_related_files('mod_aienglishlesson', 'audio', 'aiel_version');
+        if ($this->get_setting_value('userinfo')) { $this->add_related_files('mod_aienglishlesson', 'recording', 'aiel_response'); }
+    }
+    protected function process_aiel_response($data) {
+        global $DB;
+        $data = (object)$data; $oldid = $data->id;
+        $data->lessonid = $this->get_new_parentid('aienglishlesson');
+        $data->versionid = $this->get_mappingid('aiel_version', $data->versionid);
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        if ($data->userid && $data->versionid) {
+            $id = $DB->insert_record('aiel_responses', $data);
+            $this->set_mapping('aiel_response', $oldid, $id, true);
+        }
     }
 }

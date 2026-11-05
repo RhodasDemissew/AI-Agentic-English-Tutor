@@ -8,10 +8,11 @@ class lesson {
         $section = ['type' => 'object', 'properties' => [
             'kind' => ['type' => 'string', 'enum' => self::KINDS], 'title' => $text, 'body' => $text,
             'example' => $text, 'practice' => $text, 'answer' => $text,
+            'feedback' => $text, 'hint' => $text, 'simpler' => $text, 'extraexample' => $text, 'audioscript' => $text,
             'origin' => ['type' => 'string', 'enum' => ['source', 'generated', 'mixed']],
             'cards' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
                 'term' => $text, 'meaning' => $text, 'example' => $text], 'required' => ['term', 'meaning', 'example']]],
-        ], 'required' => ['kind', 'title', 'body', 'example', 'practice', 'answer', 'origin', 'cards']];
+        ], 'required' => ['kind', 'title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript', 'origin', 'cards']];
         return ['type' => 'object', 'properties' => ['title' => $text,
             'focus' => ['type' => 'string', 'enum' => ['reading', 'listening', 'speaking', 'writing']],
             'readable' => ['type' => 'boolean'], 'sections' => ['type' => 'array', 'items' => $section]],
@@ -33,7 +34,10 @@ class lesson {
         if (!is_array($data['sections'] ?? null) || !array_is_list($data['sections']) || count($data['sections']) < 10 || count($data['sections']) > 20) { $fail(); }
         $kinds = [];
         foreach ($data['sections'] as $section) {
-            if (!is_array($section) || array_diff(array_keys($section), ['kind', 'title', 'body', 'example', 'practice', 'answer', 'origin', 'cards'])) { $fail(); }
+            if (!is_array($section) || array_diff(array_keys($section), ['kind', 'title', 'body', 'example', 'practice', 'answer', 'origin', 'cards', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'])) { $fail(); }
+            foreach (['feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
+                if (isset($section[$key])) { $checktext($section[$key], 4000); }
+            }
             if (!in_array($section['kind'] ?? '', self::KINDS, true) ||
                     !in_array($section['origin'] ?? '', ['source', 'generated', 'mixed'], true)) { $fail(); }
             $kinds[] = $section['kind'];
@@ -51,7 +55,7 @@ class lesson {
         return $data;
     }
     public static function student_data(array $data): array {
-        foreach ($data['sections'] as &$section) { unset($section['answer']); }
+        foreach ($data['sections'] as &$section) { unset($section['answer'], $section['feedback']); }
         return $data;
     }
 }

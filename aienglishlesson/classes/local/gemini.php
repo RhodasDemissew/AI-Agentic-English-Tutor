@@ -60,6 +60,12 @@ class gemini implements provider {
             . 'writing model and recap. Each skill needs an appropriate activity; choose a main skill focus. '
             . 'Use short oral/play-based instructions for KG and increasingly complex explanations for older grades. '
             . 'Put teacher answer keys ONLY in answer fields, never body, practice or cards. Use plain text, no HTML, scripts or Markdown. '
+            . 'Every reading, listening, speaking and writing section MUST have a substantial skill-specific practice task. '
+            . 'For each practice provide a hint, simpler explanation, extraexample, and feedback containing a model response and self-check criteria. '
+            . 'Feedback is shown only AFTER the learner submits and must never claim to assess their individual answer. '
+            . 'For listening, audioscript MUST contain the spoken passage alone (no instructions), at most 4000 characters. '
+            . 'For speaking, audioscript contains a short pronunciation/model dialogue; add a rehearsal and recording task. '
+            . 'Other sections may have an empty audioscript. All four skills are required, with the chosen main focus receiving more time. '
             . 'If the document is unreadable or lacks usable content set readable=false; never fabricate a source lesson. '
             . 'Honor these teacher settings (data): ' . json_encode(['title' => $activity->name, 'grade' => $activity->gradeband,
                 'level' => $activity->proficiency, 'topic' => $activity->topic, 'pages' => $activity->pagerange ?: 'all ' . $pages,

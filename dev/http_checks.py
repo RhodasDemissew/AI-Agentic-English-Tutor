@@ -1,5 +1,5 @@
 """HTTP integration checks for the local fixture; standard library only."""
-import urllib.request, urllib.parse, http.cookiejar, re, json, sys
+import urllib.request, urllib.parse, http.cookiejar, re, json, sys, time
 from html.parser import HTMLParser
 
 BASE = 'http://localhost:8088'
@@ -78,6 +78,16 @@ page = teacher.get(editor, parser.fields)
 check('EDITED-DRAFT-MARKER' in page and '<script>alert(1)</script>' not in page, 'Draft edits save and HTML is escaped')
 check('EDITED-DRAFT-MARKER' not in student.get(view), 'Draft edits do not alter published lesson')
 parser = Fields(); parser.feed(page)
+publish = {'id': cmid, 'action': 'publish', 'version': draft, 'modified': parser.fields['modified'], 'sesskey': parser.fields['sesskey']}
+teacher.get('/mod/aienglishlesson/action.php', publish)
+check('EDITED-DRAFT-MARKER' not in student.get(view), 'Publication blocked until edited listening audio is rebuilt')
+teacher.get('/mod/aienglishlesson/action.php', {'id': cmid, 'action': 'audio', 'version': draft, 'sesskey': parser.fields['sesskey']})
+for attempt in range(45):
+    page = teacher.get(view + '&version=' + str(draft) + '&section=6')
+    if '<audio controls' in page:
+        break
+    time.sleep(2)
+check('<audio controls' in page, 'Queued audio rebuild completes through Moodle cron')
 teacher.get('/mod/aienglishlesson/action.php', {'id': cmid, 'action': 'publish', 'version': draft, 'modified': parser.fields['modified'], 'sesskey': parser.fields['sesskey']})
 page = student.get(view)
 check('EDITED-DRAFT-MARKER' in page and 'TEACHER-ONLY-SECRET' not in page, 'Approved draft becomes student-visible without answer key')

@@ -38,17 +38,32 @@ function aienglishlesson_delete_instance($id) {
     if (!$DB->record_exists('aienglishlesson', ['id' => $id])) { return false; }
     $cm = get_coursemodule_from_instance('aienglishlesson', $id);
     if ($cm) { get_file_storage()->delete_area_files(context_module::instance($cm->id)->id, 'mod_aienglishlesson'); }
-    foreach (['aiel_progress', 'aiel_jobs', 'aiel_versions'] as $table) { $DB->delete_records($table, ['lessonid' => $id]); }
+    foreach (['aiel_progress', 'aiel_responses', 'aiel_jobs', 'aiel_versions'] as $table) { $DB->delete_records($table, ['lessonid' => $id]); }
     $DB->delete_records('aienglishlesson', ['id' => $id]);
     return true;
 }
 function aienglishlesson_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
-    if ($context->contextlevel != CONTEXT_MODULE || $filearea !== 'source') { return false; }
+    global $DB, $USER;
+    if ($context->contextlevel != CONTEXT_MODULE || !in_array($filearea, ['source', 'audio', 'recording'])) { return false; }
     require_login($course, true, $cm);
-    require_capability('mod/aienglishlesson:manage', $context);
-    $itemid = array_shift($args);
-    if ((int)$itemid !== 0 || count($args) !== 1) { return false; }
-    $file = get_file_storage()->get_file($context->id, 'mod_aienglishlesson', 'source', 0, '/', $args[0]);
+    require_capability('mod/aienglishlesson:view', $context);
+    $manage = has_capability('mod/aienglishlesson:manage', $context);
+    $itemid = (int)array_shift($args);
+    if (count($args) !== 1) { return false; }
+    if ($filearea === 'source') {
+        require_capability('mod/aienglishlesson:manage', $context);
+        if ($itemid !== 0) { return false; }
+    } else {
+        $versionid = $itemid;
+        if ($filearea === 'recording') {
+            $response = $DB->get_record('aiel_responses', ['id' => $itemid, 'lessonid' => $cm->instance]);
+            if (!$response || (!$manage && $response->userid != $USER->id)) { return false; }
+            $versionid = $response->versionid;
+        }
+        $v = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance]);
+        if (!$v || (!$manage && ($v->status !== 'published' || !is_enrolled($context, $USER, '', true)))) { return false; }
+    }
+    $file = get_file_storage()->get_file($context->id, 'mod_aienglishlesson', $filearea, $itemid, '/', $args[0]);
     if (!$file || $file->is_directory()) { return false; }
-    send_stored_file($file, 0, 0, true, $options);
+    send_stored_file($file, 0, 0, $filearea === 'source', $options);
 }

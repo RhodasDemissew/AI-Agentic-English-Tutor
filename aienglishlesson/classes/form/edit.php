@@ -18,10 +18,10 @@ class edit extends \moodleform {
             $f->addElement('select', 'origin_' . $i, get_string('origin', 'aienglishlesson'),
                 ['source' => 'Source', 'generated' => 'Generated', 'mixed' => 'Mixed']);
             $f->setDefault('origin_' . $i, $section['origin']);
-            foreach (['title', 'body', 'example', 'practice', 'answer'] as $key) {
+            foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
                 $f->addElement('textarea', $key . '_' . $i, get_string($key, 'aienglishlesson'), ['rows' => $key === 'body' ? 6 : 3, 'cols' => 80]);
                 $f->setType($key . '_' . $i, PARAM_TEXT);
-                $f->setDefault($key . '_' . $i, $section[$key]);
+                $f->setDefault($key . '_' . $i, $section[$key] ?? '');
             }
             foreach ($section['cards'] as $j => $card) {
                 foreach (['term', 'meaning', 'example'] as $key) {

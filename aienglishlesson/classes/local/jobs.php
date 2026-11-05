@@ -43,8 +43,9 @@ class jobs {
                 $content = ($provider ?? new gemini())->generate($activity, reset($files));
                 $content = lesson::validate(json_encode($content));
                 $transaction = $DB->start_delegated_transaction();
-                $DB->insert_record('aiel_versions', (object)['lessonid' => $activity->id, 'status' => 'draft',
+                $versionid = $DB->insert_record('aiel_versions', (object)['lessonid' => $activity->id, 'status' => 'draft',
                     'content' => json_encode($content), 'timecreated' => time(), 'timemodified' => time()]);
+                audio::queue($versionid);
                 $job->status = 'succeeded'; $job->diagnostic = '';
                 $DB->update_record('aiel_jobs', $job);
                 $transaction->allow_commit();

@@ -8,4 +8,7 @@
 .aiel-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
 .aiel-card,.aiel-example,.aiel-practice {padding:1.25rem;border:1px solid #c7d5df;border-radius:.5rem;margin:1rem 0;}
 .aiel-card {background:#eff8f7;}.aiel-example {border-left:5px solid #327d76;}.aiel-pagination {display:flex;gap:1rem;justify-content:space-between;}
+.aiel-content audio {display:block;width:100%;max-width:550px;margin:1rem 0;}
+.aiel-content details {margin:1rem 0;}.aiel-content summary {cursor:pointer;font-weight:600;}
+.aiel-response-form label {display:block;font-weight:600;margin-top:1rem;}
 @media(max-width:700px){.aiel-layout{grid-template-columns:1fr;gap:1rem;}.aiel-nav ol{columns:2;}.aiel-content{font-size:1.05rem;}}

@@ -1,6 +1,7 @@
 .local/
 .env
 dist/*.zip
+dist/*.mbz
 __pycache__/
 dev/moodle-source.tar
 dev/moodle-source.new.tar

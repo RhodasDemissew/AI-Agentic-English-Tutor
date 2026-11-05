@@ -27,7 +27,7 @@ if ($data = $form->get_data()) {
         $content['focus'] = $data->focus;
         foreach ($content['sections'] as $i => &$section) {
             $section['origin'] = $data->{'origin_' . $i};
-            foreach (['title', 'body', 'example', 'practice', 'answer'] as $key) { $section[$key] = $data->{$key . '_' . $i}; }
+            foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) { $section[$key] = $data->{$key . '_' . $i}; }
             foreach ($section['cards'] as $j => &$card) {
                 foreach (['term', 'meaning', 'example'] as $key) { $card[$key] = $data->{'card_' . $i . '_' . $j . '_' . $key}; }
             }
@@ -36,7 +36,9 @@ if ($data = $form->get_data()) {
         unset($section);
         $current->content = json_encode(\mod_aienglishlesson\local\lesson::validate(json_encode($content)));
         $current->timemodified = max(time(), $current->timemodified + 1);
+        $current->audiostatus = 'none';
         $DB->update_record('aiel_versions', $current);
+        get_file_storage()->delete_area_files($context->id, 'mod_aienglishlesson', 'audio', $versionid);
     } finally { $lock->release(); }
     redirect($back);
 }
