@@ -133,12 +133,28 @@ class gemini implements provider {
             . 'Honor these teacher settings (data): ' . json_encode(['title' => $activity->name, 'grade' => $activity->gradeband,
                 'level' => $activity->proficiency, 'topic' => $activity->topic, 'pages' => $activity->pagerange ?: ($pages ? 'all ' . $pages : 'all pages'),
                 'minutes' => $activity->duration, 'instructions' => $activity->instructions]);
+        // Describe the JSON contract in text instead of asking the provider to compile
+        // a deeply nested constrained-output schema. Local validation remains mandatory.
+        $instructions .= ' Return one JSON object only, with no code fences. Use this exact shape; '
+            . 'the single section below demonstrates the keys, not the required section count. '
+            . 'Create 10-20 sections containing all the kinds listed above. All text values must be strings; '
+            . 'use empty strings where inapplicable and [] for no vocabulary cards. Do not add keys. '
+            . json_encode(['title' => 'Lesson title', 'focus' => 'reading', 'readable' => true, 'sections' => [[
+                'kind' => 'reading', 'title' => 'Section title', 'body' => 'Explanation or passage',
+                'example' => 'Worked model', 'practice' => 'Learner task', 'answer' => 'Teacher-only answer',
+                'feedback' => 'Model answer and self-check criteria', 'hint' => 'Hint', 'simpler' => 'Simpler explanation',
+                'extraexample' => 'Another example', 'audioscript' => '', 'origin' => 'mixed',
+                'cards' => [['term' => 'word', 'meaning' => 'definition', 'example' => 'Example sentence']],
+            ]]])
+            . ' focus must be reading, listening, speaking or writing; origin must be source, generated or mixed. '
+            . 'Keep each body under 8000 UTF-8 bytes and each other section text under 4000 bytes; titles under 255 bytes. '
+            . 'Keep the complete JSON under 150000 bytes.';
         $result = $this->request('POST', 'models/' . rawurlencode($c->model) . ':generateContent', [
             'systemInstruction' => ['parts' => [['text' => $instructions]]],
             'contents' => [['role' => 'user', 'parts' => [
                 ['inlineData' => ['mimeType' => 'application/pdf', 'data' => base64_encode($pdf->get_content())]],
                 ['text' => 'Build the lesson from this source PDF.']]]],
-            'generationConfig' => ['responseMimeType' => 'application/json', 'responseSchema' => lesson::schema(),
+            'generationConfig' => ['responseMimeType' => 'application/json',
                 'maxOutputTokens' => 16000],
         ]);
         $candidate = $result['candidates'][0] ?? [];

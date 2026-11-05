@@ -3,3 +3,4 @@
 ca655afd4916ec4cceca29f71441218c707d73559baeb0a0c33a5dad3829468d  ai-english-lessons-demo.mbz
 918c7cb91a237a5ff4e3fe0a1127e495cfee2f8b2fac86cdae9606da3d8694cc  mod_aienglishlesson-0.3.1.zip
 cbda1b8dae4af10cf070a17da21e7a94135eb987320f697a0557b49077ec12a4  mod_aienglishlesson-0.3.2.zip
+7ec18cd4db037d2b18c6de0e0e1d640b984610bba7a4d3bac74d19bc7720d94d  mod_aienglishlesson-0.3.3.zip

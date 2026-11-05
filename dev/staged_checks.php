@@ -14,13 +14,14 @@ foreach ($settings as $k => $v) { $original[$k] = get_config('aienglishlesson', 
 function verify($ok, $message) { if (!$ok) { throw new Exception($message); } echo "PASS: $message\n"; }
 try {
     $mock = new class($content) extends \mod_aienglishlesson\local\gemini {
-        public $body; public $calls = 0; public $fail = false; private $content;
+        public $body; public $calls = 0; public $fail = false; public $invalid = false; private $content;
         public function __construct($content) { $this->content = $content; }
         protected function request(string $method, string $path, ?array $body = null, int $maxbytes = 1000000): array {
             $this->calls++; $this->body = $body;
             verify($method === 'POST' && $path === 'models/gemini-3.5-flash-lite:generateContent', 'Same generation endpoint and model');
             if ($this->fail) { throw new \mod_aienglishlesson\local\provider_error('http503', true); }
-            return ['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => isset($body['generationConfig']['responseSchema']) ? $this->content : 'Hello.']]]]]];
+            return ['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => $this->invalid ? '{"title":"incomplete"}' :
+                (isset($body['systemInstruction']) ? $this->content : 'Hello.')]]]]]];
         }
     };
     $before = [$DB->count_records('aiel_versions'), $DB->count_records('aiel_jobs'), $DB->count_records('aiel_usage')];
@@ -29,8 +30,15 @@ try {
     $mock->diagnose(2, $activity, $pdf);
     verify(isset($mock->body['contents'][0]['parts'][0]['inlineData']) && !isset($mock->body['generationConfig']['responseSchema']), 'PDF test includes file but no schema');
     $mock->diagnose(3, $activity, $pdf);
-    verify(isset($mock->body['generationConfig']['responseSchema'], $mock->body['systemInstruction']), 'Full test exercises actual generation contract');
+    verify(!isset($mock->body['generationConfig']['responseSchema']) &&
+        $mock->body['generationConfig']['responseMimeType'] === 'application/json' &&
+        strpos($mock->body['systemInstruction']['parts'][0]['text'], '"audioscript"') !== false,
+        'Full test uses JSON mode and textual contract without provider schema constraint');
     verify($mock->calls === 3, 'One provider request per explicit test');
+    $mock->invalid = true;
+    try { $mock->diagnose(3, $activity, $pdf); throw new Exception('Invalid lesson accepted'); }
+    catch (moodle_exception $e) { verify($e->errorcode === 'invalidlesson', 'Local validator still rejects incomplete JSON lesson'); }
+    $mock->invalid = false;
     $mock->fail = true;
     try { $mock->diagnose(1, $activity, $pdf); throw new Exception('Expected failure'); }
     catch (\mod_aienglishlesson\local\provider_error $e) { verify($e->getMessage() === 'http503', 'Exact safe error preserved without retry'); }
