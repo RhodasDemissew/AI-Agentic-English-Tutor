@@ -25,6 +25,10 @@ echo $OUTPUT->heading(format_string($activity->name));
 if ($manage) {
     echo html_writer::link(new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id]), get_string('reviewresponses', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
     echo $OUTPUT->notification(get_string('reviewwarning', 'aienglishlesson'), 'info');
+    echo $OUTPUT->notification(get_string(\mod_aienglishlesson\local\jobs::direct() ? 'directnotice' : 'backgroundnotice', 'aienglishlesson'), 'info');
+    if (!get_config('aienglishlesson', 'pdfstrict')) {
+        echo html_writer::div(get_string('portablepdfnotice', 'aienglishlesson'), 'small mb-2');
+    }
     echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'action' => 'generate']), get_string('generate', 'aienglishlesson'), 'post');
     $jobs = $DB->get_records('aiel_jobs', ['lessonid' => $activity->id], 'id DESC', '*', 0, 1);
     if ($jobs) {
@@ -48,7 +52,10 @@ if ($manage) {
     }
     if ($version && $version->status === 'draft') {
         echo $OUTPUT->notification(get_string('audiostatus', 'aienglishlesson', $version->audiostatus), 'info');
-        echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'version' => $version->id, 'action' => 'audio']), get_string('buildaudio', 'aienglishlesson'), 'post');
+        if (\mod_aienglishlesson\local\audio::provider() !== 'upload') {
+            $url = \mod_aienglishlesson\local\jobs::direct() ? '/mod/aienglishlesson/prepareaudio.php' : '/mod/aienglishlesson/action.php';
+            echo $OUTPUT->single_button(new moodle_url($url, ['id' => $id, 'version' => $version->id, 'action' => 'audio']), get_string('buildaudio', 'aienglishlesson'), 'post');
+        }
         echo html_writer::link(new moodle_url('/mod/aienglishlesson/edit.php', ['id' => $id, 'version' => $version->id]), get_string('editdraft', 'aienglishlesson'), ['class' => 'btn btn-secondary my-2']);
         echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'version' => $version->id, 'modified' => $version->timemodified, 'action' => 'publish']), get_string('publish', 'aienglishlesson'), 'post');
     }
@@ -62,7 +69,7 @@ else {
     $data = $content['sections'][$section];
     $data['lessontitle'] = $content['title']; $data['focus'] = $content['focus'];
     $data['speaking'] = $data['kind'] === 'speaking';
-    $audiofile = get_file_storage()->get_file($context->id, 'mod_aienglishlesson', 'audio', $version->id, '/', 'section' . $section . '.wav');
+    $audiofile = \mod_aienglishlesson\local\audio::file($context, $version->id, $section);
     if ($audiofile) { $data['audiourl'] = moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'audio', $version->id, '/', $audiofile->get_filename())->out(false); }
     $response = $DB->get_record('aiel_responses', ['versionid' => $version->id, 'userid' => $USER->id, 'sectionno' => $section]);
     if ($response) {
@@ -76,6 +83,7 @@ else {
         }
     } else { unset($data['feedback']); }
     $data['teacher'] = $manage; $data['id'] = $id; $data['version'] = $version->id;
+    $data['canuploadaudio'] = $manage && $version->status === 'draft' && !empty($data['audioscript']);
     $data['section'] = $section; $data['sesskey'] = sesskey();
     $data['actionurl'] = (new moodle_url('/mod/aienglishlesson/action.php'))->out(false);
     $data['cansave'] = $version->status === 'published' && !isguestuser() && is_enrolled($context, $USER, '', true);

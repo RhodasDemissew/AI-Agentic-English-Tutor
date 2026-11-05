@@ -2,6 +2,9 @@
 namespace mod_aienglishlesson\local;
 defined('MOODLE_INTERNAL') || die();
 class jobs {
+    public static function direct(): bool {
+        return get_config('aienglishlesson', 'executionmode') !== 'background';
+    }
     public static function queue(int $lessonid): int {
         global $DB;
         $lock = \core\lock\lock_config::get_lock_factory('mod_aienglishlesson')->get_lock('lesson' . $lessonid, 10);
@@ -14,7 +17,7 @@ class jobs {
                 'attempts' => 0, 'diagnostic' => '', 'timecreated' => time(), 'timemodified' => time()]);
             $task = new \mod_aienglishlesson\task\generate();
             $task->set_custom_data(['jobid' => $id]);
-            \core\task\manager::queue_adhoc_task($task);
+            if (!self::direct()) { \core\task\manager::queue_adhoc_task($task); }
             $transaction->allow_commit();
             return $id;
         } finally { $lock->release(); }

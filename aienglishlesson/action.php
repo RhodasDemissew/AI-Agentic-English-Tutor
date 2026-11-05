@@ -13,7 +13,22 @@ require_sesskey();
 $back = new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id]);
 if ($action === 'generate') {
     require_capability('mod/aienglishlesson:manage', $context);
-    \mod_aienglishlesson\local\jobs::queue((int)$cm->instance);
+    $jobid = \mod_aienglishlesson\local\jobs::queue((int)$cm->instance);
+    if (\mod_aienglishlesson\local\jobs::direct()) {
+        \core\session\manager::write_close();
+        \core_php_time_limit::raise(300);
+        try { \mod_aienglishlesson\local\jobs::run($jobid); }
+        catch (moodle_exception $e) { if ($e->errorcode !== 'retrying') { throw $e; } }
+        $drafts = $DB->get_records('aiel_versions', ['lessonid' => $cm->instance, 'status' => 'draft'], 'id DESC', '*', 0, 1);
+        if ($drafts) { $back->param('version', reset($drafts)->id); }
+    }
+} else if ($action === 'uploadaudio') {
+    require_capability('mod/aienglishlesson:manage', $context);
+    $versionid = required_param('version', PARAM_INT);
+    $v = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance, 'status' => 'draft'], '*', MUST_EXIST);
+    $section = required_param('section', PARAM_INT);
+    \mod_aienglishlesson\local\audio::upload($v, $section, $_FILES['lessonaudio'] ?? []);
+    $back->params(['version' => $versionid, 'section' => $section]);
 } else if ($action === 'audio') {
     require_capability('mod/aienglishlesson:manage', $context);
     $versionid = required_param('version', PARAM_INT);

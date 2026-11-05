@@ -1,3 +1,5 @@
+> **0.3.0 update:** Read [the current upgrade and testing guide](UPGRADE-0.3.0.md) first. The original 0.2.0 details below describe the earlier background/local-speech design. The current release adds optional PDF inspection, direct processing, cloud speech, audio uploads and a native key input.
+
 # Install and test AI English Lessons 0.2.0
 
 Use `dist/mod_aienglishlesson-0.2.0.zip`. The separate `dist/ai-english-lessons-demo.mbz` is a sample lesson backup, not a plugin installer. The sample is prepared demonstration content, not live AI output, and contains cached listening/speaking audio without student submissions.

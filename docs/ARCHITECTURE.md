@@ -1,3 +1,14 @@
+# Current 0.3.0 architecture additions
+
+- `jobs::direct()` chooses direct versus background processing. In direct mode `action.php` queues only a database job record and immediately executes it, with the Moodle session lock released. Background mode retains ad-hoc task dispatch.
+- `pdf::inspect()` returns a nullable page count: absent Poppler permits basic-check processing unless strict mode is enabled.
+- `gemini::speech()` uses the official Interactions REST endpoint to return WAV data. It shares the saved key, eligibility requirements and daily request reservation with generation.
+- `audio::render()` caches each missing section, supports local/cloud providers and one-section processing. `audio::upload()` accepts teacher MP3/WAV files on drafts under the same lesson lock. `audio::file()` finds either extension.
+- `prepareaudio.php` and `amd/src/prepareaudio.js` perform sequential, authenticated teacher POST requests. Closing the page stops further requests; completed media remains cached. Students have no access to this worker.
+- No new database tables were needed. `audiostatus` now includes safe failure codes. The student reader, File API permissions and backup mapping continue to use saved media.
+
+> **0.3.0 update:** Read [the current upgrade and testing guide](UPGRADE-0.3.0.md) first. The original 0.2.0 details below describe the earlier background/local-speech design. The current release adds optional PDF inspection, direct processing, cloud speech, audio uploads and a native key input.
+
 # How AI English Lessons works
 
 The plugin runs inside Moodle. There is no separate application server and no AI conversation running for students. Teachers prepare and publish content; students read and submit work against the saved version.

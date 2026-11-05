@@ -23,7 +23,7 @@ class gemini implements provider {
             $DB->delete_records_select('aiel_usage', 'timecreated < ?', [time() - 2 * DAYSECS]);
         } finally { $lock->release(); }
     }
-    private function request(string $method, string $path, ?array $body = null): array {
+    protected function request(string $method, string $path, ?array $body = null, int $maxbytes = 1000000): array {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
         $c = $this->config();
@@ -38,7 +38,7 @@ class gemini implements provider {
         $status = (int)$curl->get_info()['http_code'];
         if ($curl->get_errno() || $status === 429 || $status >= 500) { throw new provider_error('transient', true); }
         if ($status !== 200) { throw new provider_error('http' . $status); }
-        if (strlen($raw) > 1000000) { throw new provider_error('response'); }
+        if (strlen($raw) > $maxbytes) { throw new provider_error('response'); }
         $data = json_decode($raw, true);
         if (!is_array($data)) { throw new provider_error('response'); }
         return $data;
@@ -47,6 +47,32 @@ class gemini implements provider {
         $c = $this->config();
         $data = $this->request('GET', 'models/' . rawurlencode($c->model));
         if (!in_array('generateContent', $data['supportedGenerationMethods'] ?? [])) { throw new provider_error('model'); }
+    }
+    /** Generate a saved WAV using the same server-side credentials and request cap. */
+    public function speech(string $script): string {
+        $this->config();
+        $model = get_config('aienglishlesson', 'speechmodel') ?: 'gemini-3.8-flash-lite-tts';
+        $voice = get_config('aienglishlesson', 'speechvoice') ?: 'Kore';
+        if (!preg_match('/^gemini-[a-z0-9.-]+$/D', $model) || !preg_match('/^[A-Za-z]{1,40}$/D', $voice) ||
+                trim($script) === '' || strlen($script) > 4000) { throw new provider_error('speechconfiguration'); }
+        $result = $this->request('POST', 'interactions', [
+            'model' => $model,
+            'input' => [['type' => 'user_input', 'content' => [['type' => 'text', 'text' => $script,
+                'annotations' => [['type' => 'speech_metadata', 'style' => 'Clear, natural English at a measured teaching pace.']]]]]],
+            'response_format' => ['type' => 'audio', 'mime_type' => 'audio/wav'],
+            'generation_config' => ['speech_config' => [['voice' => $voice]]],
+        ], 30000000);
+        $encoded = null;
+        foreach ($result['steps'] ?? [] as $step) {
+            if (($step['type'] ?? '') !== 'model_output') { continue; }
+            foreach ($step['content'] ?? [] as $part) {
+                if (($part['type'] ?? '') === 'audio') { $encoded = $part['data'] ?? null; }
+            }
+        }
+        $wav = is_string($encoded) ? base64_decode($encoded, true) : false;
+        if (!$wav || strlen($wav) < 44 || strlen($wav) > 20 * 1024 * 1024 ||
+                substr($wav, 0, 4) !== 'RIFF' || substr($wav, 8, 4) !== 'WAVE') { throw new provider_error('speechaudio'); }
+        return $wav;
     }
     public function generate(\stdClass $activity, \stored_file $pdf): array {
         $c = $this->config();
@@ -68,7 +94,7 @@ class gemini implements provider {
             . 'Other sections may have an empty audioscript. All four skills are required, with the chosen main focus receiving more time. '
             . 'If the document is unreadable or lacks usable content set readable=false; never fabricate a source lesson. '
             . 'Honor these teacher settings (data): ' . json_encode(['title' => $activity->name, 'grade' => $activity->gradeband,
-                'level' => $activity->proficiency, 'topic' => $activity->topic, 'pages' => $activity->pagerange ?: 'all ' . $pages,
+                'level' => $activity->proficiency, 'topic' => $activity->topic, 'pages' => $activity->pagerange ?: ($pages ? 'all ' . $pages : 'all pages'),
                 'minutes' => $activity->duration, 'instructions' => $activity->instructions]);
         $result = $this->request('POST', 'models/' . rawurlencode($c->model) . ':generateContent', [
             'systemInstruction' => ['parts' => [['text' => $instructions]]],

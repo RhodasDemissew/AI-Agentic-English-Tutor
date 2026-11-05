@@ -7,6 +7,9 @@ require_once($CFG->dirroot . '/course/modlib.php');
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->dirroot . '/mod/aienglishlesson/lib.php');
 if ($CFG->wwwroot !== 'http://localhost:8088') { die('Local development only'); }
+// Exercise the original background/local paths. Portable checks cover direct/cloud mode separately.
+set_config('executionmode', 'background', 'aienglishlesson');
+set_config('audioprovider', 'local', 'aienglishlesson');
 \core\session\manager::set_user(get_admin());
 function check($condition, $message) {
     if (!$condition) { throw new Exception('FAIL: ' . $message); }

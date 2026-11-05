@@ -1,8 +1,11 @@
-﻿# AI English Lessons - Moodle activity
+# AI English Lessons - Moodle activity
 
-Native `mod_aienglishlesson`, alpha 0.2.0 for Moodle 4.4. Teachers upload a PDF, generate and review a draft, then publish stored content covering reading, listening, speaking and writing. Students use saved content and submit text/audio without AI requests.
+Native `mod_aienglishlesson`, alpha 0.3.0 for Moodle 4.4. Teachers upload a PDF, generate and review a draft, then publish stored content covering reading, listening, speaking and writing. Students use saved content and submit text/audio without AI requests.
 
 ## Start here
+
+**New in 0.3.0:** [Hosted-site upgrade guide](docs/UPGRADE-0.3.0.md). Optional Poppler, cloud or uploaded audio, direct teacher processing without cron, and a native API-key input. Cloud access remains subject to provider eligibility and quota.
+
 
 - [Install and test](docs/TESTING.md): simple ZIP installation, sample restoration and student/teacher checklists.
 - [How the system works](docs/ARCHITECTURE.md): technologies, classes, database, communication diagram and workflows.
@@ -11,7 +14,7 @@ Native `mod_aienglishlesson`, alpha 0.2.0 for Moodle 4.4. Teachers upload a PDF,
 
 ## Deliverables
 
-- `dist/mod_aienglishlesson-0.2.0.zip`: upload through Moodle's plugin installer.
+- `dist/mod_aienglishlesson-0.3.0.zip`: upload through Moodle's plugin installer.
 - `dist/ai-english-lessons-demo.mbz`: restore into a test course AFTER installing the plugin. Includes prepared content and cached audio, without learner submissions or API settings.
 
 The sample needs no key. Real PDF generation requires an eligible configured provider and key; no live provider generation has yet been verified. The plugin defaults to disabled AI. Do not paste keys into chat or source code.
@@ -57,6 +60,6 @@ Build the ZIP with `powershell -File dev/package.ps1`. Rebuild the recorder's di
 
 ## Server requirements for new lessons
 
-The Moodle server needs `pdfinfo`, `espeak-ng`, PHP process execution and working Moodle cron. The Docker image includes these. Configure binary paths in the plugin settings. Microphone capture needs HTTPS or localhost; audio upload is available as a fallback. Existing cached audio does not require synthesis during student use.
+In Direct mode with Gemini cloud speech or uploaded audio, neither Poppler nor eSpeak NG nor cron is required for this plugin workflow. Poppler is optional for stronger PDF inspection. Local speech requires eSpeak NG; background processing requires working cron. The Docker image includes both executables. Hosting web request timeouts still apply in Direct mode. Microphone capture needs HTTPS or localhost; audio upload is available as a fallback. Existing cached audio does not require synthesis during student use.
 
 License: GNU GPL v3 or later; see `aienglishlesson/COPYING.txt`.

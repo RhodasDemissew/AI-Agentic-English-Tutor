@@ -1,4 +1,14 @@
-﻿# Verification status - 0.2.0 alpha
+# Current release: 0.3.0
+
+Verified: Moodle upgrade to 2026110501; portable PDF fallback and strict-mode rejection; direct fixture generation with no cron task; cloud request/response contract with mocked WAV data; safe failure diagnostics and partial-cache resume; HTTP teacher upload/replacement and invalid upload rejection; student/CSRF/GET denial; real local synthesis through the direct HTTP worker with cron stopped; native key input save/preserve/replace/clear and masked config logs. Existing smoke, student playback/submission, backup/restore and privacy suites passed again. No live cloud speech or PDF generation was called in development. Hosted-site model metadata access was reported by the user; that is not a generation test. Browser microphone/visual acceptance remains manual.
+
+New ZIP: `dist/mod_aienglishlesson-0.3.0.zip`. See UPGRADE-0.3.0.md. No changes were deployed to the user's live Moodle by this development session.
+
+---
+
+> **0.3.0 update:** Read [the current upgrade and testing guide](UPGRADE-0.3.0.md) first. The original 0.2.0 details below describe the earlier background/local-speech design. The current release adds optional PDF inspection, direct processing, cloud speech, audio uploads and a native key input.
+
+# Verification status - 0.2.0 alpha
 
 The 0.2.0 installation ZIP and a key-free sample lesson backup are prepared for Moodle testing. This is not a claim of production certification or successful live AI generation.
 

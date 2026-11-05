@@ -5,13 +5,21 @@ class pdf {
     public static function maxbytes(): int {
         return min(10, max(1, (int)(get_config('aienglishlesson', 'maxmb') ?: 10))) * 1024 * 1024;
     }
-    public static function inspect(\stored_file $file, string $range): int {
+    /** Null means page count is unknown in portable mode. */
+    public static function inspect(\stored_file $file, string $range): ?int {
         if ($file->get_filesize() > self::maxbytes() || $file->get_mimetype() !== 'application/pdf' ||
                 substr($file->get_content(), 0, 5) !== '%PDF-') {
             throw new \moodle_exception('invalidpdf', 'aienglishlesson');
         }
+        if ($range && (!preg_match('/^([1-9][0-9]*)(?:-([1-9][0-9]*))?$/D', $range, $match) ||
+                (isset($match[2]) && (int)$match[2] < (int)$match[1]))) {
+            throw new \moodle_exception('rangeerror', 'aienglishlesson');
+        }
         $binary = get_config('aienglishlesson', 'pdfinfo') ?: '/usr/bin/pdfinfo';
-        if (!is_executable($binary)) { throw new \moodle_exception('nopdfinfo', 'aienglishlesson'); }
+        if (!function_exists('exec') || !is_executable($binary)) {
+            if (get_config('aienglishlesson', 'pdfstrict')) { throw new \moodle_exception('nopdfinfo', 'aienglishlesson'); }
+            return null;
+        }
         $temp = tempnam(make_request_directory(), 'pdf');
         $file->copy_content_to($temp);
         $output = [];

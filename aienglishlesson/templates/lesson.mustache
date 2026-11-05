@@ -6,6 +6,16 @@
   <article class="aiel-content">
     <p class="aiel-meta">{{#str}}focus, aienglishlesson{{/str}}: {{focus}} · {{#str}}origin, aienglishlesson{{/str}}: {{origin}}</p>
     <h2>{{title}}</h2>
+    {{#canuploadaudio}}<details class="my-3"><summary>{{#str}}uploadlessonaudio, aienglishlesson{{/str}}</summary>
+      <p>{{#str}}uploadlessonaudio_desc, aienglishlesson{{/str}}</p>
+      <div class="aiel-text">{{audioscript}}</div>
+      <form method="post" enctype="multipart/form-data" action="{{actionurl}}">
+        <input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="uploadaudio"><input type="hidden" name="sesskey" value="{{sesskey}}">
+        <label for="aiel-lesson-audio">{{#str}}uploadlessonaudio, aienglishlesson{{/str}}</label>
+        <input id="aiel-lesson-audio" class="form-control" type="file" name="lessonaudio" accept=".mp3,.wav,audio/mpeg,audio/wav" required>
+        <button type="submit" class="btn btn-secondary">{{#str}}savechanges{{/str}}</button>
+      </form>
+    </details>{{/canuploadaudio}}
     {{#audiourl}}<section><h3>{{#str}}listen, aienglishlesson{{/str}}</h3><audio controls preload="none" src="{{audiourl}}">{{#str}}listen, aienglishlesson{{/str}}</audio><p>{{#str}}localvoice, aienglishlesson{{/str}}</p><details><summary>{{#str}}transcript, aienglishlesson{{/str}}</summary><div class="aiel-text">{{audioscript}}</div></details></section>{{/audiourl}}
     <div class="aiel-text">{{body}}</div>
     <div class="aiel-cards">{{#cards}}<section class="aiel-card"><h3>{{term}}</h3><details><summary>{{#str}}showmeaning, aienglishlesson{{/str}}</summary><p>{{meaning}}</p><p>{{example}}</p></details></section>{{/cards}}</div>
