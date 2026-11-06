@@ -29,7 +29,10 @@ class fake_db {
     public function get_record(string $table, array $where, string $fields = '*', int $must = 0): object|false {
         if ($table === 'aienglishlesson') { return (object)['id' => $where['id']]; }
         $set = $table === 'aiel_jobs' ? $this->jobs : $this->versions;
-        return isset($set[$where['id']]) ? clone $set[$where['id']] : false;
+        if (!isset($set[$where['id']])) { return false; }
+        $record = clone $set[$where['id']];
+        if ($table === 'aiel_jobs') { $record->attempts = (string)$record->attempts; }
+        return $record;
     }
     public function get_record_select(string $table, string $where, array $params): object|false {
         foreach ($this->jobs as $job) {
@@ -77,7 +80,7 @@ $DB = new fake_db();
 $provider = new fake_provider($content, true);
 $id = \mod_aienglishlesson\local\jobs::queue(7);
 \mod_aienglishlesson\local\jobs::run($id, $provider);
-check($DB->jobs[$id]->status === 'queued' && $DB->jobs[$id]->attempts === 1, 'direct 503 remains recoverable');
+check($DB->jobs[$id]->status === 'queued' && (int)$DB->jobs[$id]->attempts === 1, 'direct 503 remains recoverable');
 check(\mod_aienglishlesson\local\jobs::queue(7) === $id, 'queued job reused');
 \mod_aienglishlesson\local\jobs::run($id, $provider);
 check($DB->jobs[$id]->status === 'succeeded' && count($DB->versions) === 1, 'retry saves one draft');

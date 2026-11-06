@@ -64,7 +64,8 @@ class jobs {
             if (!$lock) { throw new \moodle_exception('busy', 'aienglishlesson'); }
             try {
                 $current = $DB->get_record('aiel_jobs', ['id' => $id]);
-                if (!$current || $current->status !== 'running' || $current->attempts !== $job->attempts) { return; }
+                if (!$current || $current->status !== 'running' ||
+                        (int)$current->attempts !== (int)$job->attempts) { return; }
                 $transaction = $DB->start_delegated_transaction();
                 $versionid = $DB->insert_record('aiel_versions', (object)['lessonid' => $activity->id, 'status' => 'draft',
                     'content' => json_encode($content), 'timecreated' => time(), 'timemodified' => time()]);
@@ -78,7 +79,8 @@ class jobs {
             if (!$lock) { throw new \moodle_exception('busy', 'aienglishlesson'); }
             try {
                 $current = $DB->get_record('aiel_jobs', ['id' => $id]);
-                if (!$current || $current->status !== 'running' || $current->attempts !== $job->attempts) { return; }
+                if (!$current || $current->status !== 'running' ||
+                        (int)$current->attempts !== (int)$job->attempts) { return; }
                 $retry = $e instanceof provider_error && $e->transient && $current->attempts < 3;
                 $current->status = $retry ? 'queued' : 'failed';
                 $code = $e instanceof provider_error ? $e->getMessage() :
