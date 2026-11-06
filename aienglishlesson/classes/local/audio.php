@@ -88,10 +88,15 @@ class audio {
     }
     public static function ready(\stdClass $version, \context_module $context): bool {
         $data = lesson::validate($version->content);
+        $requireaudio = (bool)get_config('aienglishlesson', 'requireaudio');
         foreach ($data['sections'] as $i => $section) {
-            if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing']) && trim($section['practice']) === '') { return false; }
-            if ($section['kind'] === 'listening' && (empty($section['audioscript']) ||
-                !self::file($context, $version->id, $i))) { return false; }
+            if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing']) && trim($section['practice'] ?? '') === '') {
+                return false;
+            }
+            if ($section['kind'] === 'listening') {
+                if (empty($section['audioscript'])) { return false; }
+                if ($requireaudio && !self::file($context, $version->id, $i)) { return false; }
+            }
         }
         return true;
     }

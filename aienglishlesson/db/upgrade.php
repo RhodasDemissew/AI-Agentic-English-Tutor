@@ -13,5 +13,17 @@ function xmldb_aienglishlesson_upgrade($oldversion) {
         if (!$manager->field_exists($versions, $field)) { $manager->add_field($versions, $field); }
         upgrade_mod_savepoint(true, 2026110401, 'aienglishlesson');
     }
+    if ($oldversion < 2026110510) {
+        if (get_config('aienglishlesson', 'model') === 'gemini-2.5-flash') {
+            set_config('model', 'gemini-3.5-flash', 'aienglishlesson');
+        }
+        upgrade_mod_savepoint(true, 2026110510, 'aienglishlesson');
+    }
+    if ($oldversion < 2026110511) {
+        if (get_config('aienglishlesson', 'requireaudio') === false) {
+            set_config('requireaudio', 0, 'aienglishlesson');
+        }
+        upgrade_mod_savepoint(true, 2026110511, 'aienglishlesson');
+    }
     return true;
 }

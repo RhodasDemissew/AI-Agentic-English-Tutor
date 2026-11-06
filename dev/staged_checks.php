@@ -21,7 +21,7 @@ try {
             verify($method === 'POST' && $path === 'models/gemini-3.5-flash-lite:generateContent', 'Same generation endpoint and model');
             if ($this->fail) { throw new \mod_aienglishlesson\local\provider_error('http503', true); }
             return ['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => $this->invalid ? '{"title":"incomplete"}' :
-                (isset($body['systemInstruction']) ? $this->content : 'Hello.')]]]]]];
+                (($body['generationConfig']['maxOutputTokens'] ?? 0) === 4096 ? $this->content : (isset($body['generationConfig']['responseMimeType']) ? '{"topic":"English"}' : 'Hello.'))]]]]]];
         }
     };
     $before = [$DB->count_records('aiel_versions'), $DB->count_records('aiel_jobs'), $DB->count_records('aiel_usage')];
@@ -32,10 +32,16 @@ try {
     $mock->diagnose(3, $activity, $pdf);
     verify(!isset($mock->body['generationConfig']['responseSchema']) &&
         $mock->body['generationConfig']['responseMimeType'] === 'application/json' &&
-        strpos($mock->body['systemInstruction']['parts'][0]['text'], '"audioscript"') !== false,
-        'Full test uses JSON mode and textual contract without provider schema constraint');
+        $mock->body['generationConfig']['maxOutputTokens'] === 4096 &&
+        $mock->body['generationConfig']['thinkingConfig'] === ['thinkingLevel' => 'minimal'] &&
+        strpos($mock->body['contents'][0]['parts'][1]['text'], '"audioscript"') !== false,
+        'Full test uses JSON mode, 4096 tokens, minimal thinking, and textual contract in contents');
     verify($mock->calls === 3, 'One provider request per explicit test');
+    $mock->diagnose(4, $activity, $pdf);
+    verify($mock->body['generationConfig'] === ['maxOutputTokens' => 1024, 'thinkingConfig' => ['thinkingLevel' => 'minimal'], 'responseMimeType' => 'application/json'] && isset($mock->body['contents'][0]['parts'][0]['inlineData']), 'Tiny JSON test uses PDF and low output allowance');
     $mock->invalid = true;
+    try { $mock->diagnose(4, $activity, $pdf); throw new Exception('Invalid diagnostic JSON accepted'); }
+    catch (\mod_aienglishlesson\local\provider_error $e) { verify($e->getMessage() === 'response', 'Tiny JSON test rejects wrong structure'); }
     try { $mock->diagnose(3, $activity, $pdf); throw new Exception('Invalid lesson accepted'); }
     catch (moodle_exception $e) { verify($e->errorcode === 'invalidlesson', 'Local validator still rejects incomplete JSON lesson'); }
     $mock->invalid = false;
