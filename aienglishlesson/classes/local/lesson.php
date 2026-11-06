@@ -28,7 +28,7 @@ class lesson {
         };
         if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections'])) { $fail(); }
         $checktext($data['title'] ?? null, 255);
-        if (empty($data['title']) || !in_array($data['focus'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) ||
+        if (trim($data['title']) === '' || !in_array($data['focus'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) ||
                 !is_bool($data['readable'] ?? null)) { $fail(); }
         if (!$data['readable']) { throw new \moodle_exception('unreadablepdf', 'aienglishlesson'); }
         if (!is_array($data['sections'] ?? null) || !array_is_list($data['sections']) || count($data['sections']) < 10 || count($data['sections']) > 20) { $fail(); }
@@ -44,14 +44,23 @@ class lesson {
             foreach (['title' => 255, 'body' => 8000, 'example' => 4000, 'practice' => 4000, 'answer' => 4000] as $key => $max) {
                 $checktext($section[$key] ?? null, $max);
             }
-            if (!$section['title'] || !$section['body']) { $fail(); }
+            if (trim($section['title']) === '' || trim($section['body']) === '') { $fail(); }
+            if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true) &&
+                    trim($section['practice']) === '') { $fail(); }
+            if (in_array($section['kind'], ['reading', 'listening', 'writing'], true) &&
+                    trim($section['answer']) === '') { $fail(); }
+            if ($section['kind'] === 'listening' && trim($section['audioscript'] ?? '') === '') { $fail(); }
             if (!is_array($section['cards'] ?? null) || !array_is_list($section['cards']) || count($section['cards']) > 20) { $fail(); }
             foreach ($section['cards'] as $card) {
                 if (!is_array($card) || array_diff(array_keys($card), ['term', 'meaning', 'example'])) { $fail(); }
-                foreach (['term', 'meaning', 'example'] as $key) { $checktext($card[$key] ?? null, 1000); }
+                foreach (['term', 'meaning', 'example'] as $key) {
+                    $checktext($card[$key] ?? null, 1000);
+                    if (trim($card[$key]) === '') { $fail(); }
+                }
             }
+            if ($section['kind'] === 'vocabulary' && !$section['cards']) { $fail(); }
         }
-        if (array_diff(self::KINDS, $kinds) || array_search('workedexample', $kinds) > array_search('writing', $kinds)) { $fail(); }
+        if (count($kinds) !== count(self::KINDS) || $kinds !== self::KINDS) { $fail(); }
         return $data;
     }
     public static function student_data(array $data): array {
