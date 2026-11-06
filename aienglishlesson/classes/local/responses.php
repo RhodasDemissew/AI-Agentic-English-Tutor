@@ -2,6 +2,17 @@
 namespace mod_aienglishlesson\local;
 defined('MOODLE_INTERNAL') || die();
 class responses {
+    /** Exact checks are opt-in: a teacher prefixes an answer with [exact]. */
+    public static function check_answer(array $section, string $response): ?bool {
+        $answer = $section['answer'] ?? '';
+        if (!is_string($answer) || !str_starts_with($answer, '[exact] ')) { return null; }
+        $expected = trim(substr($answer, 8));
+        if ($expected === '') { return null; }
+        $normalize = static function(string $text): string {
+            return mb_strtolower(preg_replace('/\s+/u', ' ', trim($text)));
+        };
+        return $normalize($response) === $normalize($expected);
+    }
     public static function save(\stdClass $version, int $section, int $userid, string $response, ?array $upload = null): int {
         global $DB;
         $data = lesson::validate($version->content);

@@ -11,7 +11,7 @@ require_capability('mod/aienglishlesson:view', $context);
 if (!data_submitted()) { throw new moodle_exception('invalidrequest'); }
 require_sesskey();
 $back = new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id]);
-if ($action === 'generate') {
+if ($action === 'generate' || $action === 'resume') {
     require_capability('mod/aienglishlesson:manage', $context);
     $jobid = \mod_aienglishlesson\local\jobs::queue((int)$cm->instance);
     if (\mod_aienglishlesson\local\jobs::direct()) {

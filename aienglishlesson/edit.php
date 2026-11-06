@@ -44,5 +44,6 @@ if ($data = $form->get_data()) {
 }
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('editdraft', 'aienglishlesson'));
+echo $OUTPUT->notification(get_string('exactanswerhelp', 'aienglishlesson'), 'info');
 $form->display();
 echo $OUTPUT->footer();

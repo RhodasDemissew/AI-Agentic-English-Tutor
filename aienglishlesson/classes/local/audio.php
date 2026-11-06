@@ -82,20 +82,20 @@ class audio {
             }
             $DB->set_field('aiel_versions', 'audiostatus', $remaining ? 'pending' : 'ready', ['id' => $versionid]);
         } catch (\Throwable $e) {
-            $code = $e instanceof provider_error ? $e->getMessage() : 'internal';
+            $code = $e instanceof provider_error && preg_match('/^[a-z0-9]{1,40}$/D', $e->getMessage()) ?
+                $e->getMessage() : 'internal';
             $DB->set_field('aiel_versions', 'audiostatus', 'failed:' . $code, ['id' => $versionid]);
         } finally { $lock->release(); }
     }
     public static function ready(\stdClass $version, \context_module $context): bool {
         $data = lesson::validate($version->content);
-        $requireaudio = (bool)get_config('aienglishlesson', 'requireaudio');
         foreach ($data['sections'] as $i => $section) {
             if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing']) && trim($section['practice'] ?? '') === '') {
                 return false;
             }
             if ($section['kind'] === 'listening') {
                 if (empty($section['audioscript'])) { return false; }
-                if ($requireaudio && !self::file($context, $version->id, $i)) { return false; }
+                if (!self::file($context, $version->id, $i)) { return false; }
             }
         }
         return true;

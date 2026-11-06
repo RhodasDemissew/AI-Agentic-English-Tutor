@@ -30,11 +30,17 @@ if ($manage) {
     echo html_writer::link(new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id]), get_string('reviewresponses', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
     echo $OUTPUT->notification(get_string('reviewwarning', 'aienglishlesson'), 'info');
     echo $OUTPUT->notification(get_string(\mod_aienglishlesson\local\jobs::direct() ? 'directnotice' : 'backgroundnotice', 'aienglishlesson'), 'info');
-    if (!get_config('aienglishlesson', 'pdfstrict')) {
+    if (!get_config('aienglishlesson', 'pdfstrict') ||
+            ($activity->pagerange && (!is_executable('/usr/bin/pdfseparate') || !is_executable('/usr/bin/pdfunite')))) {
         echo html_writer::div(get_string('portablepdfnotice', 'aienglishlesson'), 'small mb-2');
     }
-    echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'action' => 'generate']), get_string('generate', 'aienglishlesson'), 'post');
     $jobs = $DB->get_records('aiel_jobs', ['lessonid' => $activity->id], 'id DESC', '*', 0, 1);
+    $latestjob = $jobs ? reset($jobs) : false;
+    $resume = $latestjob && ($latestjob->status === 'queued' ||
+        ($latestjob->status === 'running' && $latestjob->timemodified < time() - 1200));
+    echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php',
+        ['id' => $id, 'action' => $resume ? 'resume' : 'generate']),
+        get_string($resume ? 'resume' : 'generate', 'aienglishlesson'), 'post');
     if ($jobs) {
         $job = reset($jobs);
         $diagnostic = $job->diagnostic;
@@ -43,6 +49,8 @@ if ($manage) {
             $diagnostic = get_string($key, 'aienglishlesson');
         } else if ($diagnostic && get_string_manager()->string_exists($diagnostic, 'aienglishlesson')) {
             $diagnostic = get_string($diagnostic, 'aienglishlesson');
+        } else if ($diagnostic) {
+            $diagnostic = get_string('diagnostic_internal', 'aienglishlesson');
         }
         echo html_writer::div(s(get_string('jobstatus', 'aienglishlesson', (object)['status' => $job->status, 'attempts' => $job->attempts, 'diagnostic' => $diagnostic])), 'alert alert-info');
     }
@@ -80,6 +88,10 @@ else {
         $data['response'] = $response->response;
         $data['submitted'] = true;
         $data['feedback'] = $fullcontent['sections'][$section]['feedback'] ?? '';
+        $checked = \mod_aienglishlesson\local\responses::check_answer($fullcontent['sections'][$section], $response->response);
+        if ($checked !== null) {
+            $data['answercheck'] = get_string($checked ? 'answercorrect' : 'answerincorrect', 'aienglishlesson');
+        }
         $recordings = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'recording', $response->id, 'id', false);
         if ($recordings) {
             $recording = reset($recordings);
@@ -94,6 +106,7 @@ else {
     $done = $DB->get_records('aiel_progress', ['versionid' => $version->id, 'userid' => $USER->id]);
     $completed = array_column($done, 'sectionno');
     $data['progress'] = get_string('progresscount', 'aienglishlesson', (object)['done' => count($done), 'total' => count($content['sections'])]);
+    $data['masterynotice'] = get_string('masterynotice', 'aienglishlesson');
     foreach ($content['sections'] as $i => $part) {
         $data['navigation'][] = ['title' => $part['title'], 'current' => $i === $section, 'done' => in_array($i, $completed),
             'url' => (new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id, 'version' => $version->id, 'section' => $i]))->out(false)];
