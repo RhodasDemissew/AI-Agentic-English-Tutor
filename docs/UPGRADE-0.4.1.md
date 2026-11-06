@@ -8,7 +8,7 @@ If `pdfinfo`, `pdfseparate`, and `pdfunite` are available, a selected page range
 
 ## Local verification
 
-Run `php dev/stability_checks.php`, `php dev/job_checks.php`, and `php dev/pdf_checks.php`. These portable checks use mock data. Run `docker compose up -d` and the fixture, HTTP, audio, and schema checks in `docs/TESTING.md` for Moodle integration. A live authorized provider request and browser microphone test remain separate manual checks.
+Run `php dev/stability_checks.php`, `php dev/job_checks.php`, `php dev/http_retry_checks.php`, and `php dev/pdf_checks.php`. These portable checks use mock data. Run `docker compose up -d` and the fixture, HTTP, audio, and schema checks in `docs/TESTING.md` for Moodle integration. A live authorized provider request and browser microphone test remain separate manual checks.
 
 ## Teacher workflow
 
