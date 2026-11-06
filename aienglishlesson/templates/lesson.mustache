@@ -1,6 +1,6 @@
 <div class="aiel-layout">
   <nav class="aiel-nav" aria-label="{{#str}}sections, aienglishlesson{{/str}}">
-    <p>{{progress}}</p>
+    <p>{{progress}}</p><p>{{masterynotice}}</p>
     <ol>{{#navigation}}<li><a href="{{url}}" {{#current}}aria-current="step"{{/current}}>{{title}}</a> {{#done}}<span aria-label="{{#str}}completed, aienglishlesson{{/str}}">✓</span>{{/done}}</li>{{/navigation}}</ol>
   </nav>
   <article class="aiel-content">
@@ -42,6 +42,7 @@
         <button type="submit" class="btn btn-primary my-2">{{#str}}submitresponse, aienglishlesson{{/str}}</button>
       </form>{{/cansave}}
       {{#submitted}}<p role="status">{{#str}}responsesaved, aienglishlesson{{/str}}</p>
+        {{#answercheck}}<p role="status">{{answercheck}}</p>{{/answercheck}}
         {{#recordingurl}}<audio controls preload="none" src="{{recordingurl}}">{{#str}}recording, aienglishlesson{{/str}}</audio>{{/recordingurl}}
         {{#feedback}}<section class="aiel-example"><h4>{{#str}}feedback, aienglishlesson{{/str}}</h4><p>{{#str}}feedbacknotice, aienglishlesson{{/str}}</p><div class="aiel-text">{{feedback}}</div></section>{{/feedback}}
         <form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="clearresponse"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-outline-secondary" type="submit">{{#str}}clearresponse, aienglishlesson{{/str}}</button></form>
