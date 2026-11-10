@@ -59,5 +59,23 @@ function xmldb_aienglishlesson_upgrade($oldversion) {
         }
         upgrade_mod_savepoint(true, 2026110900, 'aienglishlesson');
     }
+    if ($oldversion < 2026111000) {
+        $manager = $DB->get_manager();
+        $xml = new xmldb_file(__DIR__ . '/install.xml');
+        $xml->loadXMLStructure();
+        $table = $xml->getStructure()->getTable('aiel_quizattempts');
+        if (!$manager->table_exists($table)) { $manager->create_table($table); }
+        $jobs = new xmldb_table('aiel_jobs');
+        $stage = new xmldb_field('stage', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'attempts');
+        $partial = new xmldb_field('partial', XMLDB_TYPE_TEXT);
+        if (!$manager->field_exists($jobs, $stage)) { $manager->add_field($jobs, $stage); }
+        if (!$manager->field_exists($jobs, $partial)) { $manager->add_field($jobs, $partial); }
+        $grades = new xmldb_table('aiel_grades');
+        foreach (['skillgrade', 'quizgrade'] as $name) {
+            $field = new xmldb_field($name, XMLDB_TYPE_NUMBER, '5, 2');
+            if (!$manager->field_exists($grades, $field)) { $manager->add_field($grades, $field); }
+        }
+        upgrade_mod_savepoint(true, 2026111000, 'aienglishlesson');
+    }
     return true;
 }
