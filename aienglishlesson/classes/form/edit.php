@@ -31,6 +31,26 @@ class edit extends \moodleform {
                 }
             }
         }
+        if (isset($this->_customdata['content']['quiz'])) {
+            foreach ($this->_customdata['content']['quiz'] as $i => $question) {
+                $f->addElement('header', 'quiz' . $i, get_string('quizquestion', 'aienglishlesson', $i + 1));
+                $name = 'quiz_question_' . $i;
+                $f->addElement('textarea', $name, get_string('question', 'aienglishlesson'), ['rows' => 2, 'cols' => 80]);
+                $f->setType($name, PARAM_TEXT); $f->setDefault($name, $question['question']);
+                foreach ($question['choices'] as $j => $choice) {
+                    $name = 'quiz_choice_' . $i . '_' . $j;
+                    $f->addElement('text', $name, get_string('choice', 'aienglishlesson', $j + 1), ['size' => 80]);
+                    $f->setType($name, PARAM_TEXT); $f->setDefault($name, $choice);
+                }
+                $name = 'quiz_correct_' . $i;
+                $f->addElement('select', $name, get_string('correctchoice', 'aienglishlesson'),
+                    [0 => '1', 1 => '2', 2 => '3', 3 => '4']);
+                $f->setDefault($name, $question['correct']);
+                $name = 'quiz_explanation_' . $i;
+                $f->addElement('textarea', $name, get_string('explanation', 'aienglishlesson'), ['rows' => 2, 'cols' => 80]);
+                $f->setType($name, PARAM_TEXT); $f->setDefault($name, $question['explanation']);
+            }
+        }
         $f->setDefault('title', $this->_customdata['content']['title']);
         $this->add_action_buttons(true, get_string('savechanges'));
     }
