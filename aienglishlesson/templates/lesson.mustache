@@ -1,7 +1,7 @@
 <div class="aiel-layout">
   <nav class="aiel-nav" aria-label="{{#str}}sections, aienglishlesson{{/str}}">
     <p>{{progress}}</p><p>{{masterynotice}}</p>
-    <ol>{{#navigation}}<li><a href="{{url}}" {{#current}}aria-current="step"{{/current}}>{{title}}</a> {{#done}}<span aria-label="{{#str}}completed, aienglishlesson{{/str}}">✓</span>{{/done}}</li>{{/navigation}}</ol>
+    <ol>{{#navigation}}<li><a href="{{url}}" {{#current}}aria-current="step"{{/current}}>{{title}}</a> {{#done}}<span aria-label="{{#str}}completed, aienglishlesson{{/str}}">✓</span>{{/done}}</li>{{/navigation}}{{#quizurl}}<li><a href="{{quizurl}}">{{#str}}quiz, aienglishlesson{{/str}}</a></li>{{/quizurl}}</ol>
   </nav>
   <article class="aiel-content">
     <p class="aiel-meta">{{#str}}focus, aienglishlesson{{/str}}: {{focus}} · {{#str}}origin, aienglishlesson{{/str}}: {{origin}}</p>
@@ -52,7 +52,7 @@
         {{#approvedscore}}<p>{{approvedscore}}</p>{{/approvedscore}}
         {{#teacherfeedback}}<p>{{teacherfeedback}}</p>{{/teacherfeedback}}
         {{#feedback}}<section class="aiel-example"><h4>{{#str}}feedback, aienglishlesson{{/str}}</h4><p>{{#str}}feedbacknotice, aienglishlesson{{/str}}</p><div class="aiel-text">{{feedback}}</div></section>{{/feedback}}
-        <form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="clearresponse"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-outline-secondary" type="submit">{{#str}}clearresponse, aienglishlesson{{/str}}</button></form>
+        <form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="clearresponse"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-outline-secondary" type="submit">{{deletelabel}}</button></form>
       {{/submitted}}
     </section>{{/practice}}
     {{#teacher}}{{#answer}}<details><summary>{{#str}}answer, aienglishlesson{{/str}}</summary><div class="aiel-text">{{answer}}</div></details>{{/answer}}{{/teacher}}
