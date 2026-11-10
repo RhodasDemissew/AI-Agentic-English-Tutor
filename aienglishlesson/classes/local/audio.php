@@ -15,9 +15,9 @@ class audio {
     }
     public static function queue(int $versionid): void {
         global $DB;
-        $background = !jobs::direct() && self::provider() !== 'upload';
-        $DB->set_field('aiel_versions', 'audiostatus', $background ? 'queued' : 'none', ['id' => $versionid]);
-        if (!$background) { return; }
+        $enabled = self::provider() !== 'upload';
+        $DB->set_field('aiel_versions', 'audiostatus', $enabled ? 'queued' : 'none', ['id' => $versionid]);
+        if (!$enabled || jobs::direct()) { return; }
         $task = new \mod_aienglishlesson\task\render_audio();
         $task->set_custom_data(['versionid' => $versionid]);
         \core\task\manager::queue_adhoc_task($task, true);
@@ -93,9 +93,10 @@ class audio {
             if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing']) && trim($section['practice'] ?? '') === '') {
                 return false;
             }
-            if ($section['kind'] === 'listening') {
-                if (empty($section['audioscript'])) { return false; }
-                if (!self::file($context, $version->id, $i)) { return false; }
+            if ($section['kind'] === 'listening' && empty($section['audioscript'])) { return false; }
+            if (in_array($section['kind'], ['listening', 'speaking'], true) &&
+                    !empty($section['audioscript']) && !self::file($context, $version->id, $i)) {
+                return false;
             }
         }
         return true;
