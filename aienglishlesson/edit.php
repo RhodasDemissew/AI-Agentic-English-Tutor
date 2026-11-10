@@ -23,6 +23,7 @@ if ($data = $form->get_data()) {
     try {
         $current = $DB->get_record('aiel_versions', ['id' => $versionid, 'status' => 'draft'], '*', MUST_EXIST);
         if ($current->timemodified != $data->modified) { throw new moodle_exception('editconflict', 'aienglishlesson'); }
+        $originalscripts = array_column($content['sections'], 'audioscript');
         $content['title'] = $data->title;
         $content['focus'] = $data->focus;
         foreach ($content['sections'] as $i => &$section) {
@@ -34,11 +35,24 @@ if ($data = $form->get_data()) {
             unset($card);
         }
         unset($section);
+        if (isset($content['quiz'])) {
+            foreach ($content['quiz'] as $i => &$question) {
+                $question['question'] = $data->{'quiz_question_' . $i};
+                foreach ($question['choices'] as $j => &$choice) { $choice = $data->{'quiz_choice_' . $i . '_' . $j}; }
+                unset($choice);
+                $question['correct'] = (int)$data->{'quiz_correct_' . $i};
+                $question['explanation'] = $data->{'quiz_explanation_' . $i};
+            }
+            unset($question);
+        }
         $current->content = json_encode(\mod_aienglishlesson\local\lesson::validate(json_encode($content)));
         $current->timemodified = max(time(), $current->timemodified + 1);
-        $current->audiostatus = 'none';
+        $audiochanged = $originalscripts !== array_column($content['sections'], 'audioscript');
+        if ($audiochanged) { $current->audiostatus = 'none'; }
         $DB->update_record('aiel_versions', $current);
-        get_file_storage()->delete_area_files($context->id, 'mod_aienglishlesson', 'audio', $versionid);
+        if ($audiochanged) {
+            get_file_storage()->delete_area_files($context->id, 'mod_aienglishlesson', 'audio', $versionid);
+        }
     } finally { $lock->release(); }
     redirect($back);
 }
