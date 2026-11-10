@@ -1,4 +1,4 @@
-# AI English Lessons 0.3.0 (testing release)
+# AI English Lessons 0.5.0 (testing release)
 
 Moodle 4.4 activity. Teacher PDF generation; published four-skill lessons; cached audio; learner text/recording submissions. No student AI requests.
 

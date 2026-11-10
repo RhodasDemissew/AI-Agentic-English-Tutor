@@ -60,9 +60,15 @@ if ($action === 'generate' || $action === 'resume') {
     $section = required_param('section', PARAM_INT);
     $v = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance, 'status' => 'published'], '*', MUST_EXIST);
     if ($action === 'submit') {
-        \mod_aienglishlesson\local\responses::save($v, $section, $USER->id, required_param('response', PARAM_RAW_TRIMMED), $_FILES['recording'] ?? null);
+        $attemptid = \mod_aienglishlesson\local\responses::save($v, $section, $USER->id,
+            required_param('response', PARAM_RAW_TRIMMED), $_FILES['recording'] ?? null, $_FILES['answerimage'] ?? null);
+        if (\mod_aienglishlesson\local\assessment::enabled()) {
+            \core\session\manager::write_close();
+            \core_php_time_limit::raise(180);
+            \mod_aienglishlesson\local\assessment::evaluate($attemptid);
+        }
     } else {
-        \mod_aienglishlesson\local\responses::delete($context, ['versionid' => $versionid, 'userid' => $USER->id, 'sectionno' => $section]);
+        \mod_aienglishlesson\local\assessment::clear_latest($context, $versionid, $USER->id, $section);
     }
     $back->params(['section' => $section, 'version' => $versionid]);
 } else if ($action === 'progress') {

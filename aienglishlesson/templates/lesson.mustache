@@ -28,6 +28,8 @@
         <input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="submit"><input type="hidden" name="sesskey" value="{{sesskey}}">
         <label for="aiel-response">{{#str}}yourresponse, aienglishlesson{{/str}}</label>
         <textarea id="aiel-response" name="response" rows="6" maxlength="12000" class="form-control">{{response}}</textarea>
+        <label for="aiel-answerimage">{{#str}}answerimage, aienglishlesson{{/str}}</label>
+        <input class="form-control" type="file" id="aiel-answerimage" name="answerimage" accept="image/jpeg,image/png,image/webp">
         {{#speaking}}<div class="aiel-recorder my-3">
           <p>{{#str}}recordingnotice, aienglishlesson{{/str}}</p>
           <button type="button" class="btn btn-secondary" data-action="record">{{#str}}record, aienglishlesson{{/str}}</button>
@@ -38,12 +40,17 @@
           <label for="aiel-recording">{{#str}}uploadrecording, aienglishlesson{{/str}}</label>
           <input class="form-control" type="file" id="aiel-recording" name="recording" accept="audio/*,.webm,.m4a,.ogg,.wav,.mp3">
         </div>{{/speaking}}
-        <p>{{#str}}noaistudent, aienglishlesson{{/str}}</p>
+        <p>{{ainotice}}</p>
         <button type="submit" class="btn btn-primary my-2">{{#str}}submitresponse, aienglishlesson{{/str}}</button>
       </form>{{/cansave}}
       {{#submitted}}<p role="status">{{#str}}responsesaved, aienglishlesson{{/str}}</p>
         {{#answercheck}}<p role="status">{{answercheck}}</p>{{/answercheck}}
         {{#recordingurl}}<audio controls preload="none" src="{{recordingurl}}">{{#str}}recording, aienglishlesson{{/str}}</audio>{{/recordingurl}}
+        {{#imageurl}}<p><img src="{{imageurl}}" alt="{{#str}}answerimage, aienglishlesson{{/str}}" style="max-width:100%"></p>{{/imageurl}}
+        {{#aiscore}}<p role="status">{{aiscore}}</p>{{/aiscore}}
+        {{#aifeedback}}<p>{{aifeedback}}</p>{{/aifeedback}}
+        {{#approvedscore}}<p>{{approvedscore}}</p>{{/approvedscore}}
+        {{#teacherfeedback}}<p>{{teacherfeedback}}</p>{{/teacherfeedback}}
         {{#feedback}}<section class="aiel-example"><h4>{{#str}}feedback, aienglishlesson{{/str}}</h4><p>{{#str}}feedbacknotice, aienglishlesson{{/str}}</p><div class="aiel-text">{{feedback}}</div></section>{{/feedback}}
         <form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="clearresponse"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-outline-secondary" type="submit">{{#str}}clearresponse, aienglishlesson{{/str}}</button></form>
       {{/submitted}}

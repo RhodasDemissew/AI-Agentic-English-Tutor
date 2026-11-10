@@ -7,6 +7,7 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
         if ($this->get_setting_value('userinfo')) {
             $paths[] = new restore_path_element('aiel_progress', '/activity/aienglishlesson/progresses/progress');
             $paths[] = new restore_path_element('aiel_response', '/activity/aienglishlesson/responses/response');
+            $paths[] = new restore_path_element('aiel_grade', '/activity/aienglishlesson/grades/grade');
         }
         return $this->prepare_activity_structure($paths);
     }
@@ -15,7 +16,10 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
         $data = (object)$data; $data->course = $this->get_courseid();
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
-        $this->apply_activity_instance($DB->insert_record('aienglishlesson', $data));
+        $data->id = $DB->insert_record('aienglishlesson', $data);
+        $this->apply_activity_instance($data->id);
+        require_once(__DIR__ . '/../../lib.php');
+        aienglishlesson_grade_item_update($data);
     }
     protected function process_aiel_version($data) {
         global $DB;
@@ -41,6 +45,12 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
         $this->add_related_files('mod_aienglishlesson', 'source', null);
         $this->add_related_files('mod_aienglishlesson', 'audio', 'aiel_version');
         if ($this->get_setting_value('userinfo')) { $this->add_related_files('mod_aienglishlesson', 'recording', 'aiel_response'); }
+        if ($this->get_setting_value('userinfo')) {
+            $this->add_related_files('mod_aienglishlesson', 'image', 'aiel_response');
+            global $DB;
+            $activity = $DB->get_record('aienglishlesson', ['id' => $this->get_new_parentid('aienglishlesson')]);
+            if ($activity) { aienglishlesson_update_grades($activity); }
+        }
     }
     protected function process_aiel_response($data) {
         global $DB;
@@ -48,9 +58,18 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
         $data->lessonid = $this->get_new_parentid('aienglishlesson');
         $data->versionid = $this->get_mappingid('aiel_version', $data->versionid);
         $data->userid = $this->get_mappingid('user', $data->userid);
+        $data->approvedby = !empty($data->approvedby) ? $this->get_mappingid('user', $data->approvedby) : null;
         if ($data->userid && $data->versionid) {
             $id = $DB->insert_record('aiel_responses', $data);
             $this->set_mapping('aiel_response', $oldid, $id, true);
         }
+    }
+    protected function process_aiel_grade($data) {
+        global $DB;
+        $data = (object)$data;
+        $data->lessonid = $this->get_new_parentid('aienglishlesson');
+        $data->versionid = $this->get_mappingid('aiel_version', $data->versionid);
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        if ($data->userid && $data->versionid) { $DB->insert_record('aiel_grades', $data); }
     }
 }

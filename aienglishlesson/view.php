@@ -23,6 +23,11 @@ if ($version && $version->status === 'published') { (new completion_info($course
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($activity->name));
 if ($manage) {
+    if ($version) {
+        echo html_writer::link(new moodle_url('/mod/aienglishlesson/rubrics.php',
+            ['id' => $id, 'version' => $version->id]), get_string('rubrics', 'aienglishlesson'),
+            ['class' => 'btn btn-secondary mr-2']);
+    }
     if (has_capability('moodle/site:config', context_system::instance())) {
         echo html_writer::link(new moodle_url('/mod/aienglishlesson/diagnostics.php', ['id' => $id]),
             get_string('generationdiagnostics', 'aienglishlesson'), ['class' => 'btn btn-secondary mr-2']);
@@ -74,6 +79,12 @@ if ($manage) {
 }
 if (!$version) { echo $OUTPUT->notification(get_string('nopublished', 'aienglishlesson'), 'info'); }
 else {
+    $grade = $DB->get_record('aiel_grades', ['lessonid' => $activity->id, 'userid' => $USER->id]);
+    if ($grade) {
+        echo $OUTPUT->notification(get_string($grade->versionid == $version->id ?
+            'releasedgrade' : 'oldreleasedgrade', 'aienglishlesson',
+            (object)['grade' => $grade->grade, 'version' => $grade->versionid]), 'info');
+    }
     $content = \mod_aienglishlesson\local\lesson::validate($version->content);
     $fullcontent = $content;
     if (!$manage) { $content = \mod_aienglishlesson\local\lesson::student_data($content); }
@@ -83,10 +94,28 @@ else {
     $data['speaking'] = $data['kind'] === 'speaking';
     $audiofile = \mod_aienglishlesson\local\audio::file($context, $version->id, $section);
     if ($audiofile) { $data['audiourl'] = moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'audio', $version->id, '/', $audiofile->get_filename())->out(false); }
-    $response = $DB->get_record('aiel_responses', ['versionid' => $version->id, 'userid' => $USER->id, 'sectionno' => $section]);
+    $responses = $DB->get_records('aiel_responses', ['versionid' => $version->id,
+        'userid' => $USER->id, 'sectionno' => $section], 'id DESC', '*', 0, 1);
+    $response = $responses ? reset($responses) : false;
     if ($response) {
+        \mod_aienglishlesson\local\assessment::recover_stale($response->id);
+        if ($response->aistatus === 'running' && $response->timemodified < time() - 180) {
+            $response->aistatus = 'failed';
+        }
         $data['response'] = $response->response;
         $data['submitted'] = true;
+        if ($response->aistatus === 'succeeded') {
+            $data['aiscore'] = get_string('provisionalscore', 'aienglishlesson', $response->aiscore);
+            $data['aifeedback'] = $response->aifeedback;
+        } else if ($response->aistatus === 'failed') {
+            $data['aifeedback'] = get_string('aifailed', 'aienglishlesson');
+        } else if ($response->aistatus === 'running') {
+            $data['aifeedback'] = get_string('airunning', 'aienglishlesson');
+        }
+        if ($response->timeapproved) {
+            $data['approvedscore'] = get_string('approvedscore', 'aienglishlesson', $response->teacherscore);
+            $data['teacherfeedback'] = $response->teacherfeedback;
+        }
         $data['feedback'] = $fullcontent['sections'][$section]['feedback'] ?? '';
         $checked = \mod_aienglishlesson\local\responses::check_answer($fullcontent['sections'][$section], $response->response);
         if ($checked !== null) {
@@ -97,6 +126,12 @@ else {
             $recording = reset($recordings);
             $data['recordingurl'] = moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'recording', $response->id, '/', $recording->get_filename())->out(false);
         }
+        $images = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'image', $response->id, 'id', false);
+        if ($images) {
+            $image = reset($images);
+            $data['imageurl'] = moodle_url::make_pluginfile_url($context->id,
+                'mod_aienglishlesson', 'image', $response->id, '/', $image->get_filename())->out(false);
+        }
     } else { unset($data['feedback']); }
     $data['teacher'] = $manage; $data['id'] = $id; $data['version'] = $version->id;
     $data['canuploadaudio'] = $manage && $version->status === 'draft' && !empty($data['audioscript']);
@@ -106,7 +141,9 @@ else {
     $done = $DB->get_records('aiel_progress', ['versionid' => $version->id, 'userid' => $USER->id]);
     $completed = array_column($done, 'sectionno');
     $data['progress'] = get_string('progresscount', 'aienglishlesson', (object)['done' => count($done), 'total' => count($content['sections'])]);
-    $data['masterynotice'] = get_string('masterynotice', 'aienglishlesson');
+    $data['masterynotice'] = get_string('assessmentnotice', 'aienglishlesson');
+    $data['ainotice'] = get_string(\mod_aienglishlesson\local\assessment::enabled() ?
+        'aienabledstudent' : 'noaistudent', 'aienglishlesson');
     foreach ($content['sections'] as $i => $part) {
         $data['navigation'][] = ['title' => $part['title'], 'current' => $i === $section, 'done' => in_array($i, $completed),
             'url' => (new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id, 'version' => $version->id, 'section' => $i]))->out(false)];
