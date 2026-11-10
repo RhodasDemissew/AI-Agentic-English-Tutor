@@ -8,6 +8,7 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
             $paths[] = new restore_path_element('aiel_progress', '/activity/aienglishlesson/progresses/progress');
             $paths[] = new restore_path_element('aiel_response', '/activity/aienglishlesson/responses/response');
             $paths[] = new restore_path_element('aiel_grade', '/activity/aienglishlesson/grades/grade');
+            $paths[] = new restore_path_element('aiel_quizattempt', '/activity/aienglishlesson/quizattempts/quizattempt');
         }
         return $this->prepare_activity_structure($paths);
     }
@@ -71,5 +72,13 @@ class restore_aienglishlesson_activity_structure_step extends restore_activity_s
         $data->versionid = $this->get_mappingid('aiel_version', $data->versionid);
         $data->userid = $this->get_mappingid('user', $data->userid);
         if ($data->userid && $data->versionid) { $DB->insert_record('aiel_grades', $data); }
+    }
+    protected function process_aiel_quizattempt($data) {
+        global $DB;
+        $data = (object)$data;
+        $data->lessonid = $this->get_new_parentid('aienglishlesson');
+        $data->versionid = $this->get_mappingid('aiel_version', $data->versionid);
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        if ($data->userid && $data->versionid) { $DB->insert_record('aiel_quizattempts', $data); }
     }
 }
