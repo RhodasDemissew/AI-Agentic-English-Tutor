@@ -92,6 +92,14 @@ class responses {
                     'mimetype' => $imagemime], $image['tmp_name']);
             }
             $transaction->allow_commit();
+            $cm = get_coursemodule_from_instance('aienglishlesson', $version->lessonid, 0, false, MUST_EXIST);
+            $context = \context_module::instance($cm->id);
+            foreach ($DB->get_records('aiel_responses', ['versionid' => $version->id,
+                    'userid' => $userid, 'sectionno' => $section]) as $old) {
+                if ($old->id != $record->id && !$old->timeapproved) {
+                    self::delete($context, ['id' => $old->id]);
+                }
+            }
             return (int)$record->id;
         } finally { $lock->release(); }
     }
