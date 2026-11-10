@@ -16,8 +16,12 @@ class backup_aienglishlesson_activity_structure_step extends backup_activity_str
             'approvedby', 'timeapproved', 'timemodified']);
         $root->add_child($responses); $responses->add_child($response);
         $grades = new backup_nested_element('grades');
-        $grade = new backup_nested_element('grade', ['id'], ['versionid', 'userid', 'grade', 'timemodified']);
+        $grade = new backup_nested_element('grade', ['id'], ['versionid', 'userid', 'grade', 'skillgrade', 'quizgrade', 'timemodified']);
         $root->add_child($grades); $grades->add_child($grade);
+        $quizattempts = new backup_nested_element('quizattempts');
+        $quizattempt = new backup_nested_element('quizattempt', ['id'], ['versionid', 'userid', 'attemptno',
+            'answers', 'score', 'timecreated']);
+        $root->add_child($quizattempts); $quizattempts->add_child($quizattempt);
         $root->set_source_table('aienglishlesson', ['id' => backup::VAR_ACTIVITYID]);
         $version->set_source_table('aiel_versions', ['lessonid' => backup::VAR_PARENTID]);
         $version->annotate_files('mod_aienglishlesson', 'audio', 'id');
@@ -30,6 +34,8 @@ class backup_aienglishlesson_activity_structure_step extends backup_activity_str
             $response->annotate_files('mod_aienglishlesson', 'image', 'id');
             $grade->set_source_table('aiel_grades', ['lessonid' => backup::VAR_PARENTID]);
             $grade->annotate_ids('user', 'userid');
+            $quizattempt->set_source_table('aiel_quizattempts', ['lessonid' => backup::VAR_PARENTID]);
+            $quizattempt->annotate_ids('user', 'userid');
         }
         $root->annotate_files('mod_aienglishlesson', 'intro', null);
         $root->annotate_files('mod_aienglishlesson', 'source', null);
