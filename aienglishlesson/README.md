@@ -1,22 +1,23 @@
-# AI English Lessons 0.5.0 (testing release)
+# AI English Lessons 0.6.0
 
-Moodle 4.4 activity. Teacher PDF generation; published four-skill lessons; cached audio; learner text/recording submissions. No student AI requests.
+Moodle 4.4 activity with staged lesson generation, teacher review, four assessed skills, a ten-question quiz, cached audio and one final gradebook item.
 
-Upgrade by installing this ZIP over the earlier plugin, without uninstalling it. Complete Moodle's database upgrade. Existing data and the stored key are preserved.
+Install this ZIP over the existing plugin without uninstalling it, then complete Moodle's database upgrade. Existing published lessons without a quiz keep skills-only grading. New generated drafts include a quiz; review and edit its questions before publishing.
 
-For hosting without Poppler/eSpeak/working cron, configure the activity module settings:
+## Teacher flow
 
-- Lesson preparation mode: Direct.
-- Require Poppler PDF inspection: unchecked.
-- Lesson audio preparation: Gemini cloud speech, or Teacher uploads audio.
-- Speech model: gemini-3.8-flash-lite-tts; voice: Kore.
+1. Create or edit an activity. Add one to five source files: PDF, DOCX, PPTX, ODT, TXT, MD, CSV, HTML/HTM, PNG, JPEG or WebP. A page range applies only to one PDF.
+2. Set the grade band and English level. The new activity duration defaults to 60 minutes.
+3. Generate the lesson. Direct mode runs three browser requests in sequence; keep the preparation page open. Background mode requires Moodle cron.
+4. Review the draft, the quiz and the generated audio. Generated speech starts automatically when configured. Failed audio sections can be retried or replaced with uploaded MP3/WAV.
+5. Publish the approved draft. Learners can submit responses and retake the same ten-question quiz. The latest completed quiz attempt counts.
 
-Keep the existing lesson-generation provider/key settings. Save. The key field is intentionally blank after saving; blank preserves the stored key.
+## Grading
 
-Click Generate lesson and keep the page open. Review/edit the draft. Click Prepare listening and speaking audio, keep that page open, then return to the lesson and publish after review. Alternatively upload MP3/WAV files (up to 8 MB) from each draft audio section. Student playback uses stored files.
+Skills is the average of the latest scored Reading, Writing, Listening and Speaking answers. The final grade is 50% Skills and 50% Quiz. It reaches Moodle's single gradebook item when all five results are available. Teachers can review and change skill scores. A grade from an earlier version remains visible until the new version has all required scores. Export grades through Moodle's gradebook.
 
-Direct mode avoids manual cron runs but hosting request timeouts still apply. Moodle cron should still be configured for other site tasks. Cloud speech uses the existing Gemini credentials and shared request cap. It requires an eligible deployment and model access. This release does not resolve Gemini's child-directed application restrictions.
+Answer evaluation is disabled by default in administrator settings. When enabled, learner responses and media are sent to the configured Gemini provider for feedback; credentials remain server-side. Provider eligibility and quota requirements still apply.
 
-Without Poppler, PDF size/signature/range syntax are checked, but page count/encryption/range bounds cannot be verified locally. The whole PDF is transmitted. Missing eSpeak does not matter for cloud or uploaded audio. Editing a draft clears its old audio.
+Source files, answer keys and draft content are teacher-only. Student quiz pages do not reveal correct choices until after a completed attempt. Backup, restore and privacy export include quiz attempts and grade components.
 
-Live cloud speech has not been tested with a real key; request formatting, response validation, cached processing and access rules were tested using fictional provider responses. Direct HTTP processing and local synthesis were tested with cron stopped. No credentials are bundled.
+This package has local lint and smoke checks. A live Moodle 4.4 site and real provider key are needed to verify the full upload, generation, audio and gradebook flow before wider use.
