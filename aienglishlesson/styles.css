@@ -11,4 +11,16 @@
 .aiel-content audio {display:block;width:100%;max-width:550px;margin:1rem 0;}
 .aiel-content details {margin:1rem 0;}.aiel-content summary {cursor:pointer;font-weight:600;}
 .aiel-response-form label {display:block;font-weight:600;margin-top:1rem;}
-@media(max-width:700px){.aiel-layout{grid-template-columns:1fr;gap:1rem;}.aiel-nav ol{columns:2;}.aiel-content{font-size:1.05rem;}}
+.aiel-content h2,.aiel-content h3,.aiel-quiz-question h3{font-weight:700;line-height:1.25;}
+.aiel-content h2{margin:.4rem 0 1.4rem;}
+.aiel-practice{background:#fff;box-shadow:0 2px 10px rgba(20,45,65,.07);}
+.aiel-nav p:first-child{font-size:1.1rem;font-weight:700;}
+.aiel-nav ol{padding-left:1.4rem;}
+.aiel-grades{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin:1rem 0 1.5rem;}
+.aiel-grade-card{padding:1rem;border:1px solid #c7d5df;border-radius:.6rem;background:#f3f8fa;}
+.aiel-grade-card h3{font-size:1rem;font-weight:700;margin:0 0 .4rem;}
+.aiel-grade-card p{font-size:1.25rem;font-weight:700;margin:0;}
+.aiel-quiz-choice{display:block;padding:.7rem 1rem;margin:.35rem 0;border:1px solid #c7d5df;border-radius:.5rem;cursor:pointer;}
+.aiel-quiz-choice:hover,.aiel-quiz-choice:focus-within{background:#eff8f7;border-color:#327d76;}
+.aiel-quiz-choice input{margin-right:.6rem;}
+@media(max-width:700px){.aiel-layout{grid-template-columns:1fr;gap:1rem;margin:1rem 0;}.aiel-nav ol{columns:1;}.aiel-content{font-size:1.05rem;}.aiel-card,.aiel-example,.aiel-practice{padding:1rem;}.aiel-pagination{flex-wrap:wrap;}.aiel-grades{grid-template-columns:1fr;}}
