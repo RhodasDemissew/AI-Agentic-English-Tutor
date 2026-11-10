@@ -17,8 +17,14 @@ class provider implements \core_privacy\local\metadata\provider,
         $collection->add_database_table('aiel_responses', $fields, 'privacy:metadata:responses');
         $collection->add_database_table('aiel_grades', ['userid' => 'privacy:metadata:userid',
             'lessonid' => 'privacy:metadata:lessonid', 'versionid' => 'privacy:metadata:versionid',
-            'grade' => 'privacy:metadata:assessment', 'timemodified' => 'privacy:metadata:timemodified'],
+            'grade' => 'privacy:metadata:assessment', 'skillgrade' => 'privacy:metadata:assessment',
+            'quizgrade' => 'privacy:metadata:assessment', 'timemodified' => 'privacy:metadata:timemodified'],
             'privacy:metadata:grades');
+        $collection->add_database_table('aiel_quizattempts', ['userid' => 'privacy:metadata:userid',
+            'lessonid' => 'privacy:metadata:lessonid', 'versionid' => 'privacy:metadata:versionid',
+            'attemptno' => 'privacy:metadata:assessment', 'answers' => 'privacy:metadata:assessment',
+            'score' => 'privacy:metadata:assessment', 'timecreated' => 'privacy:metadata:timemodified'],
+            'privacy:metadata:assessment');
         $collection->add_external_location_link('gemini', ['source' => 'privacy:metadata:source',
             'response' => 'privacy:metadata:response', 'media' => 'privacy:metadata:assessment'],
             'privacy:metadata:gemini');
@@ -31,9 +37,10 @@ class provider implements \core_privacy\local\metadata\provider,
             JOIN {modules} m ON m.id = cm.module LEFT JOIN {aiel_progress} p ON p.lessonid = cm.instance
             LEFT JOIN {aiel_responses} r ON r.lessonid = cm.instance
             LEFT JOIN {aiel_grades} g ON g.lessonid = cm.instance
-            WHERE c.contextlevel = :level AND m.name = :name AND (p.userid = :userid OR r.userid = :responseuserid OR g.userid = :gradeuserid)',
+            LEFT JOIN {aiel_quizattempts} q ON q.lessonid = cm.instance
+            WHERE c.contextlevel = :level AND m.name = :name AND (p.userid = :userid OR r.userid = :responseuserid OR g.userid = :gradeuserid OR q.userid = :quizuserid)',
             ['level' => CONTEXT_MODULE, 'name' => 'aienglishlesson', 'userid' => $userid,
-                'responseuserid' => $userid, 'gradeuserid' => $userid]);
+                'responseuserid' => $userid, 'gradeuserid' => $userid, 'quizuserid' => $userid]);
         return $list;
     }
     private static function lessonid(\context $context): int {
@@ -44,7 +51,7 @@ class provider implements \core_privacy\local\metadata\provider,
     public static function get_users_in_context(userlist $userlist) {
         $id = self::lessonid($userlist->get_context());
         if ($id) {
-            foreach (['aiel_progress', 'aiel_responses', 'aiel_grades'] as $table) {
+            foreach (['aiel_progress', 'aiel_responses', 'aiel_grades', 'aiel_quizattempts'] as $table) {
                 $userlist->add_from_sql('userid', 'SELECT userid FROM {' . $table . '} WHERE lessonid = :id', ['id' => $id]);
             }
         }
@@ -56,8 +63,10 @@ class provider implements \core_privacy\local\metadata\provider,
             if (!$id) { continue; }
             $records = $DB->get_records('aiel_progress', ['lessonid' => $id, 'userid' => $contextlist->get_user()->id]);
             $grades = $DB->get_records('aiel_grades', ['lessonid' => $id, 'userid' => $contextlist->get_user()->id]);
+            $quizattempts = $DB->get_records('aiel_quizattempts', ['lessonid' => $id, 'userid' => $contextlist->get_user()->id]);
             writer::with_context($context)->export_data([get_string('pluginname', 'aienglishlesson')],
-                (object)['progress' => array_values($records), 'grades' => array_values($grades)]);
+                (object)['progress' => array_values($records), 'grades' => array_values($grades),
+                    'quizattempts' => array_values($quizattempts)]);
             foreach ($DB->get_records('aiel_responses', ['lessonid' => $id, 'userid' => $contextlist->get_user()->id]) as $response) {
                 $path = [get_string('pluginname', 'aienglishlesson'), 'Responses', (string)$response->id];
                 writer::with_context($context)->export_data($path, $response);
@@ -71,6 +80,7 @@ class provider implements \core_privacy\local\metadata\provider,
         if ($id = self::lessonid($context)) {
             $DB->delete_records('aiel_progress', ['lessonid' => $id]);
             $DB->delete_records('aiel_grades', ['lessonid' => $id]);
+            $DB->delete_records('aiel_quizattempts', ['lessonid' => $id]);
             \mod_aienglishlesson\local\responses::delete($context, ['lessonid' => $id]);
         }
     }
@@ -81,6 +91,7 @@ class provider implements \core_privacy\local\metadata\provider,
                 $conditions = ['lessonid' => $id, 'userid' => $contextlist->get_user()->id];
                 $DB->delete_records('aiel_progress', $conditions);
                 $DB->delete_records('aiel_grades', $conditions);
+                $DB->delete_records('aiel_quizattempts', $conditions);
                 \mod_aienglishlesson\local\responses::delete($context, $conditions);
             }
         }
@@ -93,6 +104,7 @@ class provider implements \core_privacy\local\metadata\provider,
         $params['lessonid'] = $id;
         $DB->delete_records_select('aiel_progress', 'lessonid = :lessonid AND userid ' . $sql, $params);
         $DB->delete_records_select('aiel_grades', 'lessonid = :lessonid AND userid ' . $sql, $params);
+        $DB->delete_records_select('aiel_quizattempts', 'lessonid = :lessonid AND userid ' . $sql, $params);
         foreach ($userlist->get_userids() as $userid) {
             \mod_aienglishlesson\local\responses::delete($userlist->get_context(), ['lessonid' => $id, 'userid' => $userid]);
         }
