@@ -13,9 +13,13 @@ class lesson {
             'cards' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
                 'term' => $text, 'meaning' => $text, 'example' => $text], 'required' => ['term', 'meaning', 'example']]],
         ], 'required' => ['kind', 'title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript', 'origin', 'cards']];
+        $question = ['type' => 'object', 'properties' => ['question' => $text,
+            'choices' => ['type' => 'array', 'items' => $text], 'correct' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 3],
+            'explanation' => $text], 'required' => ['question', 'choices', 'correct', 'explanation']];
         return ['type' => 'object', 'properties' => ['title' => $text,
             'focus' => ['type' => 'string', 'enum' => ['reading', 'listening', 'speaking', 'writing']],
-            'readable' => ['type' => 'boolean'], 'sections' => ['type' => 'array', 'items' => $section]],
+            'readable' => ['type' => 'boolean'], 'sections' => ['type' => 'array', 'items' => $section],
+            'quiz' => ['type' => 'array', 'items' => $question]],
             'required' => ['title', 'focus', 'readable', 'sections']];
     }
     public static function validate(string $json): array {
@@ -26,7 +30,7 @@ class lesson {
         $checktext = function($value, $max) use ($fail) {
             if (!is_string($value) || strlen($value) > $max || strpos($value, "\0") !== false) { $fail(); }
         };
-        if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections'])) { $fail(); }
+        if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections', 'quiz'])) { $fail(); }
         $checktext($data['title'] ?? null, 255);
         if (trim($data['title']) === '' || !in_array($data['focus'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) ||
                 !is_bool($data['readable'] ?? null)) { $fail(); }
@@ -61,10 +65,33 @@ class lesson {
             if ($section['kind'] === 'vocabulary' && !$section['cards']) { $fail(); }
         }
         if (count($kinds) !== count(self::KINDS) || $kinds !== self::KINDS) { $fail(); }
+        if (array_key_exists('quiz', $data)) {
+            if (!is_array($data['quiz']) || !array_is_list($data['quiz']) || count($data['quiz']) !== 10) { $fail(); }
+            foreach ($data['quiz'] as $question) {
+                if (!is_array($question) || array_diff(array_keys($question), ['question', 'choices', 'correct', 'explanation']) ||
+                        !is_int($question['correct'] ?? null) || $question['correct'] < 0 || $question['correct'] > 3 ||
+                        !is_array($question['choices'] ?? null) || !array_is_list($question['choices']) ||
+                        count($question['choices']) !== 4) { $fail(); }
+                $checktext($question['question'] ?? null, 1000);
+                $checktext($question['explanation'] ?? null, 1500);
+                if (trim($question['question']) === '' || trim($question['explanation']) === '') { $fail(); }
+                foreach ($question['choices'] as $choice) {
+                    $checktext($choice, 500);
+                    if (trim($choice) === '') { $fail(); }
+                }
+                if (count(array_unique(array_map(static function($choice) {
+                    return mb_strtolower(trim($choice));
+                }, $question['choices']))) !== 4) { $fail(); }
+            }
+        }
         return $data;
     }
     public static function student_data(array $data): array {
         foreach ($data['sections'] as &$section) { unset($section['answer'], $section['feedback']); }
+        if (isset($data['quiz'])) {
+            foreach ($data['quiz'] as &$question) { unset($question['correct'], $question['explanation']); }
+            unset($question);
+        }
         return $data;
     }
 }
