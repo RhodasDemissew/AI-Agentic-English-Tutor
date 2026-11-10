@@ -1,4 +1,4 @@
-# AI English Lessons 0.6.0
+# AI English Lessons 0.6.1
 
 Moodle 4.4 activity with staged lesson generation, teacher review, four assessed skills, a ten-question quiz, cached audio and one final gradebook item.
 
@@ -21,3 +21,5 @@ Answer evaluation is disabled by default in administrator settings. When enabled
 Source files, answer keys and draft content are teacher-only. Student quiz pages do not reveal correct choices until after a completed attempt. Backup, restore and privacy export include quiz attempts and grade components.
 
 This package has local lint and smoke checks. A live Moodle 4.4 site and real provider key are needed to verify the full upload, generation, audio and gradebook flow before wider use.
+
+Version 0.6.1 raises the response allowance for the long second generation stage on Gemini 3.5 Flash and reports distinct output limit, content restriction and short audio script failures. Install the updated ZIP and retry generation if the previous attempt failed at stage two.
