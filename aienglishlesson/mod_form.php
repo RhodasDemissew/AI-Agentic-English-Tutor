@@ -10,7 +10,7 @@ class mod_aienglishlesson_mod_form extends moodleform_mod {
         $mform->addRule('name', null, 'required', null, 'client');
         $this->standard_intro_elements();
         $mform->addElement('filemanager', 'sourcepdf', get_string('sourcepdf', 'aienglishlesson'), null,
-            ['subdirs' => 0, 'maxfiles' => 1, 'accepted_types' => ['.pdf'],
+            ['subdirs' => 0, 'maxfiles' => 5, 'accepted_types' => \mod_aienglishlesson\local\source_files::extensions(),
              'maxbytes' => \mod_aienglishlesson\local\pdf::maxbytes()]);
         $bands = ['adult' => 'Adult developers', 'KG' => 'KG'];
         for ($i = 1; $i <= 12; $i++) { $bands['G' . $i] = 'Grade ' . $i; }
@@ -21,7 +21,7 @@ class mod_aienglishlesson_mod_form extends moodleform_mod {
             $mform->addElement('text', $field, get_string($field, 'aienglishlesson'));
             $mform->setType($field, $field === 'duration' ? PARAM_INT : PARAM_TEXT);
         }
-        $mform->setDefault('duration', 30);
+        $mform->setDefault('duration', 60);
         $mform->addElement('textarea', 'instructions', get_string('instructions', 'aienglishlesson'), ['rows' => 4, 'cols' => 70]);
         $mform->setType('instructions', PARAM_TEXT);
         $this->standard_coursemodule_elements();
@@ -29,10 +29,11 @@ class mod_aienglishlesson_mod_form extends moodleform_mod {
     }
     public function data_preprocessing(&$defaults) {
         $draft = file_get_submitted_draft_itemid('sourcepdf');
-        file_prepare_draft_area($draft, $this->context->id, 'mod_aienglishlesson', 'source', 0, ['subdirs' => 0, 'maxfiles' => 1]);
+        file_prepare_draft_area($draft, $this->context->id, 'mod_aienglishlesson', 'source', 0, ['subdirs' => 0, 'maxfiles' => 5]);
         $defaults['sourcepdf'] = $draft;
     }
     public function validation($data, $files) {
+        global $USER;
         $errors = parent::validation($data, $files);
         foreach (['name', 'topic'] as $field) {
             if (\core_text::strlen($data[$field]) > 255) { $errors[$field] = get_string('maximumchars', '', 255); }
@@ -40,6 +41,13 @@ class mod_aienglishlesson_mod_form extends moodleform_mod {
         if ($data['duration'] < 5 || $data['duration'] > 180) { $errors['duration'] = get_string('durationerror', 'aienglishlesson'); }
         if ($data['pagerange'] && !preg_match('/^[1-9][0-9]{0,3}(-[1-9][0-9]{0,3})?$/D', $data['pagerange'])) {
             $errors['pagerange'] = get_string('rangeerror', 'aienglishlesson');
+        }
+        if ($data['pagerange']) {
+            $actual = get_file_storage()->get_area_files(\context_user::instance($USER->id)->id,
+                'user', 'draft', (int)($data['sourcepdf'] ?? 0), 'id', false);
+            if (count($actual) !== 1 || strtolower(pathinfo(reset($actual)->get_filename(), PATHINFO_EXTENSION)) !== 'pdf') {
+                $errors['pagerange'] = get_string('rangeonlypdf', 'aienglishlesson');
+            }
         }
         if (strlen($data['instructions']) > 4000) { $errors['instructions'] = get_string('toolong', 'aienglishlesson'); }
         return $errors;
