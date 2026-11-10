@@ -241,7 +241,10 @@ class gemini implements provider {
                     . 'Provide substantial writing guidance, a model answer, and a recap with useful self-checks. '
                     . 'Reading, listening, speaking, and writing must each have a clear practice task. '
                     . 'Reading, listening and writing require teacher answers. ');
-            $result = $this->generate_json($c, array_merge($sourceparts, [['text' => $prompt]]), 8192);
+            // The second group contains two full spoken scripts as well as the reading passage.
+            // Gemini 3.5 Flash supports a larger response than the original 8192-token cap.
+            $tokens = $index === 1 && $c->model === 'gemini-3.5-flash' ? 16384 : 8192;
+            $result = $this->generate_json($c, array_merge($sourceparts, [['text' => $prompt]]), $tokens);
             if (($result['readable'] ?? true) === false || !is_array($result['sections'] ?? null) ||
                     count($result['sections']) !== 5) { throw new provider_error('response'); }
             $result = $this->normalize_payload($result);
@@ -257,7 +260,7 @@ class gemini implements provider {
                 if ($index === 1 && in_array($section['kind'], ['listening', 'speaking'], true)) {
                     $script = $section['audioscript'] ?? '';
                     $minimum = $young ? 180 : ($older ? 330 : 250);
-                    if (!is_string($script) || str_word_count($script) < $minimum) { throw new provider_error('incomplete'); }
+                    if (!is_string($script) || str_word_count($script) < $minimum) { throw new provider_error('shortaudio'); }
                 }
             }
             return ['sections' => $result['sections']];
@@ -286,7 +289,7 @@ class gemini implements provider {
                 'maxOutputTokens' => $tokens], $this->thinking_config($c->model)),
         ], 2000000, 1);
         $candidate = $result['candidates'][0] ?? [];
-        if (($candidate['finishReason'] ?? '') !== 'STOP') { throw new provider_error('incomplete'); }
+        self::check_generation_finish($result);
         $text = '';
         foreach ($candidate['content']['parts'] ?? [] as $part) {
             if (empty($part['thought'])) { $text .= $part['text'] ?? ''; }
@@ -294,6 +297,15 @@ class gemini implements provider {
         $data = json_decode($text, true);
         if (!is_array($data)) { throw new provider_error('response'); }
         return $data;
+    }
+    public static function check_generation_finish(array $result): void {
+        $candidate = $result['candidates'][0] ?? [];
+        $reason = $candidate['finishReason'] ?? '';
+        if ($reason === 'STOP') { return; }
+        if ($reason === 'MAX_TOKENS') { throw new provider_error('outputlimit'); }
+        if (in_array($reason, ['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII', 'IMAGE_SAFETY'], true) ||
+                !empty($result['promptFeedback']['blockReason'])) { throw new provider_error('blocked'); }
+        throw new provider_error('incomplete');
     }
     private function normalize_payload(array $raw): array {
         // Normalize optional presentation fields only. Missing lesson content must fail validation.
