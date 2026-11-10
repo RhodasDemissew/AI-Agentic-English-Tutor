@@ -15,12 +15,7 @@ if ($action === 'generate' || $action === 'resume') {
     require_capability('mod/aienglishlesson:manage', $context);
     $jobid = \mod_aienglishlesson\local\jobs::queue((int)$cm->instance);
     if (\mod_aienglishlesson\local\jobs::direct()) {
-        \core\session\manager::write_close();
-        \core_php_time_limit::raise(300);
-        try { \mod_aienglishlesson\local\jobs::run($jobid); }
-        catch (moodle_exception $e) { if ($e->errorcode !== 'retrying') { throw $e; } }
-        $drafts = $DB->get_records('aiel_versions', ['lessonid' => $cm->instance, 'status' => 'draft'], 'id DESC', '*', 0, 1);
-        if ($drafts) { $back->param('version', reset($drafts)->id); }
+        redirect(new moodle_url('/mod/aienglishlesson/preparegeneration.php', ['id' => $id, 'job' => $jobid]));
     }
 } else if ($action === 'uploadaudio') {
     require_capability('mod/aienglishlesson:manage', $context);
