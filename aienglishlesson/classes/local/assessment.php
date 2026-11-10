@@ -2,7 +2,7 @@
 namespace mod_aienglishlesson\local;
 defined('MOODLE_INTERNAL') || die();
 
-/** Assessment orchestration. Teacher approval, rather than an AI response, releases grades. */
+/** Assessment orchestration and single gradebook result. */
 class assessment {
     public const SKILLS = ['reading', 'listening', 'speaking', 'writing'];
 
@@ -28,16 +28,22 @@ class assessment {
         return array_intersect_key($saved, $defaults);
     }
 
-    /** Aggregate the latest approved attempt for each of the four fixed lesson skills. */
+    /** Aggregate the latest scored response for each of the four fixed lesson skills. */
     public static function grade_from_attempts(array $content, array $attempts): ?float {
         $scores = [];
         foreach ($attempts as $row) {
             $kind = $content['sections'][$row->sectionno]['kind'] ?? '';
-            if (in_array($kind, self::SKILLS, true) && !isset($scores[$kind]) && $row->timeapproved) {
-                $scores[$kind] = (int)$row->teacherscore;
+            if (in_array($kind, self::SKILLS, true) && !array_key_exists($kind, $scores)) {
+                $scores[$kind] = $row->timeapproved ? (int)$row->teacherscore :
+                    (($row->aistatus ?? '') === 'succeeded' ? (int)$row->aiscore : null);
             }
         }
-        return count($scores) === 4 ? array_sum($scores) / 4 : null;
+        return count($scores) === 4 && !in_array(null, $scores, true) ? array_sum($scores) / 4 : null;
+    }
+
+    public static function final_grade(?float $skills, ?float $quiz, bool $hasquiz): ?float {
+        if ($skills === null || ($hasquiz && $quiz === null)) { return null; }
+        return $hasquiz ? ($skills + $quiz) / 2 : $skills;
     }
 
     public static function evaluate(int $attemptid, ?gemini $provider = null): void {
@@ -68,8 +74,12 @@ class assessment {
                 $files = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', $area, $attemptid, 'id', false);
                 foreach ($files as $file) { $media[] = $file; }
             }
+            $activity = $DB->get_record('aienglishlesson', ['id' => $attempt->lessonid], '*', MUST_EXIST);
+            $rubric = self::rubrics($version)[$section['kind']] ?? '';
+            $rubric .= "\nGrade band: " . $activity->gradeband . '; English level: ' . $activity->proficiency .
+                '. Judge language and task completion at this learner level.';
             $result = ($provider ?? new gemini())->assess($section, $attempt->response,
-                self::rubrics($version)[$section['kind']] ?? '', $media);
+                $rubric, $media);
             if ($DB->record_exists('aiel_responses', ['id' => $attemptid])) {
                 $DB->update_record('aiel_responses', (object)['id' => $attemptid, 'aistatus' => 'succeeded',
                     'aiscore' => $result['score'], 'aifeedback' => $result['feedback'],
@@ -80,6 +90,13 @@ class assessment {
             if ($DB->record_exists('aiel_responses', ['id' => $attemptid])) {
                 $DB->set_field('aiel_responses', 'aistatus', 'failed', ['id' => $attemptid]);
             }
+        }
+        try {
+            if ($DB->get_field('aiel_responses', 'aistatus', ['id' => $attemptid]) === 'succeeded') {
+                self::update_grade($version, (int)$attempt->userid);
+            }
+        } catch (\Throwable $e) {
+            // Keep the evaluation even if a locked gradebook item prevents release.
         }
     }
 
@@ -125,32 +142,47 @@ class assessment {
             $DB->update_record('aiel_responses', (object)['id' => $attempt->id,
                 'teacherscore' => $score, 'teacherfeedback' => $feedback,
                 'approvedby' => $teacherid, 'timeapproved' => time()]);
-            $attempts = $DB->get_records('aiel_responses', ['versionid' => $version->id,
-                'userid' => $attempt->userid], 'id DESC');
-            $grade = self::grade_from_attempts($content, $attempts);
-            if ($grade !== null) {
-                require_once(__DIR__ . '/../../lib.php');
-                $activity = $DB->get_record('aienglishlesson', ['id' => $attempt->lessonid], '*', MUST_EXIST);
-                aienglishlesson_grade_item_update($activity);
-                $gradeitem = \grade_item::fetch(['courseid' => $activity->course, 'itemtype' => 'mod',
-                    'itemmodule' => 'aienglishlesson', 'iteminstance' => $activity->id, 'itemnumber' => 0]);
-                $usergrade = $gradeitem ? \grade_grade::fetch(['itemid' => $gradeitem->id,
-                    'userid' => $attempt->userid]) : false;
-                if (($gradeitem && $gradeitem->is_locked()) || ($usergrade && $usergrade->is_locked())) {
-                    throw new \moodle_exception('gradelocked', 'aienglishlesson');
-                }
-                $record = $DB->get_record('aiel_grades', ['lessonid' => $attempt->lessonid, 'userid' => $attempt->userid]);
-                $record = $record ?: (object)['lessonid' => $attempt->lessonid, 'userid' => $attempt->userid];
-                $record->versionid = $version->id; $record->grade = $grade; $record->timemodified = time();
-                if (empty($record->id)) { $DB->insert_record('aiel_grades', $record); }
-                else { $DB->update_record('aiel_grades', $record); }
-            }
-            if ($grade !== null) {
-                $result = aienglishlesson_grade_item_update($activity,
-                    (object)['userid' => $attempt->userid, 'rawgrade' => $grade]);
-                if ($result !== GRADE_UPDATE_OK) { throw new \moodle_exception('gradeerror', 'aienglishlesson'); }
-            }
+            self::update_grade_unlocked($version, (int)$attempt->userid);
             $tx->allow_commit();
         } finally { $lock->release(); }
+    }
+
+    public static function update_grade(\stdClass $version, int $userid): void {
+        $lock = \core\lock\lock_config::get_lock_factory('mod_aienglishlesson')->get_lock(
+            'grade' . $version->lessonid . '-' . $userid, 10);
+        if (!$lock) { throw new \moodle_exception('busy', 'aienglishlesson'); }
+        try { self::update_grade_unlocked($version, $userid); }
+        finally { $lock->release(); }
+    }
+
+    private static function update_grade_unlocked(\stdClass $version, int $userid): void {
+        global $DB;
+        if ($version->status !== 'published') { return; }
+        $content = lesson::validate($version->content);
+        $attempts = $DB->get_records('aiel_responses', ['versionid' => $version->id, 'userid' => $userid], 'id DESC');
+        $skills = self::grade_from_attempts($content, $attempts);
+        $latestquiz = isset($content['quiz']) ? quiz::latest((int)$version->id, $userid) : false;
+        $quizgrade = $latestquiz ? (float)$latestquiz->score : null;
+        $grade = self::final_grade($skills, $quizgrade, isset($content['quiz']));
+        if ($grade === null) { return; }
+        require_once(__DIR__ . '/../../lib.php');
+        $activity = $DB->get_record('aienglishlesson', ['id' => $version->lessonid], '*', MUST_EXIST);
+        aienglishlesson_grade_item_update($activity);
+        $gradeitem = \grade_item::fetch(['courseid' => $activity->course, 'itemtype' => 'mod',
+            'itemmodule' => 'aienglishlesson', 'iteminstance' => $activity->id, 'itemnumber' => 0]);
+        $usergrade = $gradeitem ? \grade_grade::fetch(['itemid' => $gradeitem->id, 'userid' => $userid]) : false;
+        if (($gradeitem && $gradeitem->is_locked()) || ($usergrade && $usergrade->is_locked())) {
+            throw new \moodle_exception('gradelocked', 'aienglishlesson');
+        }
+        $record = $DB->get_record('aiel_grades', ['lessonid' => $version->lessonid, 'userid' => $userid]);
+        $record = $record ?: (object)['lessonid' => $version->lessonid, 'userid' => $userid];
+        $record->versionid = $version->id; $record->grade = $grade;
+        $record->skillgrade = $skills; $record->quizgrade = $quizgrade; $record->timemodified = time();
+        $tx = $DB->start_delegated_transaction();
+        if (empty($record->id)) { $DB->insert_record('aiel_grades', $record); }
+        else { $DB->update_record('aiel_grades', $record); }
+        $result = aienglishlesson_grade_item_update($activity, (object)['userid' => $userid, 'rawgrade' => $grade]);
+        if ($result !== GRADE_UPDATE_OK) { throw new \moodle_exception('gradeerror', 'aienglishlesson'); }
+        $tx->allow_commit();
     }
 }
