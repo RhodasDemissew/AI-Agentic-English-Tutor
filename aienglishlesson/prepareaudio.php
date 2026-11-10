@@ -8,11 +8,11 @@ $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
 require_login($course, true, $cm);
 $context = context_module::instance($cm->id);
 require_capability('mod/aienglishlesson:manage', $context);
-if (!data_submitted()) { throw new moodle_exception('invalidrequest'); }
-require_sesskey();
 $version = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance, 'status' => 'draft'], '*', MUST_EXIST);
 $back = new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id, 'version' => $versionid]);
 if (optional_param('step', 0, PARAM_INT)) {
+    if (!data_submitted()) { throw new moodle_exception('invalidrequest'); }
+    require_sesskey();
     \core\session\manager::write_close();
     \core_php_time_limit::raise(300);
     \mod_aienglishlesson\local\audio::render($versionid, true);
