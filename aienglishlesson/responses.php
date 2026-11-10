@@ -14,7 +14,9 @@ if (data_submitted()) {
     $score = required_param('score', PARAM_INT);
     $feedback = required_param('teacherfeedback', PARAM_RAW_TRIMMED);
     \mod_aienglishlesson\local\assessment::approve($attempt, $score, $feedback, $USER->id);
-    redirect(new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id, 'page' => $page]));
+    $return = new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id, 'page' => $page]);
+    $return->set_anchor('response-' . $attemptid);
+    redirect($return);
 }
 $PAGE->set_url('/mod/aienglishlesson/responses.php', ['id' => $id]);
 $PAGE->set_title(get_string('reviewresponses', 'aienglishlesson'));
@@ -22,15 +24,18 @@ $PAGE->set_heading($course->fullname);
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('reviewresponses', 'aienglishlesson'));
 echo html_writer::link(new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id]), get_string('backtolesson', 'aienglishlesson'));
-$total = $DB->count_records('aiel_responses', ['lessonid' => $cm->instance]);
+$where = 'r.lessonid = :lessonid AND r.id = (SELECT MAX(newest.id) FROM {aiel_responses} newest
+    WHERE newest.versionid = r.versionid AND newest.userid = r.userid AND newest.sectionno = r.sectionno)';
+$total = $DB->count_records_sql('SELECT COUNT(1) FROM {aiel_responses} r WHERE ' . $where, ['lessonid' => $cm->instance]);
 echo $OUTPUT->paging_bar($total, $page, 25, $PAGE->url);
-foreach ($DB->get_records('aiel_responses', ['lessonid' => $cm->instance], 'timemodified DESC, id DESC', '*', $page * 25, 25) as $r) {
+foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $where .
+        ' ORDER BY r.timemodified DESC, r.id DESC', ['lessonid' => $cm->instance], $page * 25, 25) as $r) {
     \mod_aienglishlesson\local\assessment::recover_stale($r->id);
     if ($r->aistatus === 'running' && $r->timemodified < time() - 180) { $r->aistatus = 'failed'; }
     $user = $DB->get_record('user', ['id' => $r->userid], '*', MUST_EXIST);
     $version = $DB->get_record('aiel_versions', ['id' => $r->versionid], '*', MUST_EXIST);
     $lesson = \mod_aienglishlesson\local\lesson::validate($version->content);
-    echo html_writer::start_tag('section', ['class' => 'aiel-practice']);
+    echo html_writer::start_tag('section', ['class' => 'aiel-practice', 'id' => 'response-' . $r->id]);
     echo html_writer::tag('h3', s(fullname($user) . ' — ' . $lesson['sections'][$r->sectionno]['title']));
     echo html_writer::div(s(get_string('versionlabel', 'aienglishlesson', (object)['id' => $version->id, 'status' => $version->status]) . ' · ' . userdate($r->timemodified)));
     echo html_writer::div(s($r->response), 'aiel-text');
@@ -50,6 +55,7 @@ foreach ($DB->get_records('aiel_responses', ['lessonid' => $cm->instance], 'time
         echo html_writer::div(s($r->aifeedback), 'aiel-text');
     }
     if ($r->timeapproved) {
+        echo html_writer::div(get_string('approved', 'aienglishlesson'), 'badge badge-success my-2');
         echo html_writer::div(get_string('approvedscore', 'aienglishlesson', $r->teacherscore));
         echo html_writer::div(s($r->teacherfeedback));
     }
@@ -69,7 +75,7 @@ foreach ($DB->get_records('aiel_responses', ['lessonid' => $cm->instance], 'time
         echo html_writer::tag('textarea', s($r->teacherfeedback ?? $r->aifeedback ?? ''),
             ['id' => 'feedback' . $r->id, 'name' => 'teacherfeedback', 'rows' => 3,
                 'maxlength' => 4000, 'class' => 'form-control']);
-        echo html_writer::tag('button', get_string('approvescore', 'aienglishlesson'),
+        echo html_writer::tag('button', get_string($r->timeapproved ? 'savescorechanges' : 'approvescore', 'aienglishlesson'),
             ['type' => 'submit', 'class' => 'btn btn-primary mt-2']);
         echo html_writer::end_tag('form');
     }
