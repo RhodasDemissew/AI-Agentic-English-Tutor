@@ -42,7 +42,7 @@ if ($manage) {
     $jobs = $DB->get_records('aiel_jobs', ['lessonid' => $activity->id], 'id DESC', '*', 0, 1);
     $latestjob = $jobs ? reset($jobs) : false;
     $resume = $latestjob && ($latestjob->status === 'queued' ||
-        ($latestjob->status === 'running' && $latestjob->timemodified < time() - 1200));
+        ($latestjob->status === 'running' && $latestjob->timemodified < time() - \mod_aienglishlesson\local\jobs::stale_after()));
     echo $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php',
         ['id' => $id, 'action' => $resume ? 'resume' : 'generate']),
         get_string($resume ? 'resume' : 'generate', 'aienglishlesson'), 'post');
@@ -68,6 +68,11 @@ if ($manage) {
             s(get_string('versionlabel', 'aienglishlesson', (object)['id' => $v->id, 'status' => $v->status]))));
     }
     if ($version && $version->status === 'draft') {
+        $draftcontent = \mod_aienglishlesson\local\lesson::validate($version->content);
+        if (isset($draftcontent['quiz'])) {
+            echo html_writer::link(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $version->id]),
+                get_string('reviewquiz', 'aienglishlesson'), ['class' => 'btn btn-secondary my-2']);
+        }
         echo $OUTPUT->notification(get_string('audiostatus', 'aienglishlesson', $version->audiostatus), 'info');
         if (\mod_aienglishlesson\local\audio::provider() !== 'upload') {
             $url = \mod_aienglishlesson\local\jobs::direct() ? '/mod/aienglishlesson/prepareaudio.php' : '/mod/aienglishlesson/action.php';
@@ -80,13 +85,35 @@ if ($manage) {
 if (!$version) { echo $OUTPUT->notification(get_string('nopublished', 'aienglishlesson'), 'info'); }
 else {
     $grade = $DB->get_record('aiel_grades', ['lessonid' => $activity->id, 'userid' => $USER->id]);
-    if ($grade) {
+    if ($grade && ($grade->versionid != $version->id || $manage)) {
         echo $OUTPUT->notification(get_string($grade->versionid == $version->id ?
             'releasedgrade' : 'oldreleasedgrade', 'aienglishlesson',
             (object)['grade' => $grade->grade, 'version' => $grade->versionid]), 'info');
     }
     $content = \mod_aienglishlesson\local\lesson::validate($version->content);
     $fullcontent = $content;
+    if (isset($content['quiz'])) {
+        echo html_writer::link(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $version->id]),
+            get_string('quiz', 'aienglishlesson'), ['class' => 'btn btn-primary my-2']);
+    }
+    if ($version->status === 'published' && !$manage) {
+        $attempts = $DB->get_records('aiel_responses', ['versionid' => $version->id, 'userid' => $USER->id], 'id DESC');
+        $skills = \mod_aienglishlesson\local\assessment::grade_from_attempts($content, $attempts);
+        $quizattempt = isset($content['quiz']) ? \mod_aienglishlesson\local\quiz::latest($version->id, $USER->id) : false;
+        $quizscore = $quizattempt ? $quizattempt->score : null;
+        $items = [
+            get_string('skills', 'aienglishlesson') => $skills === null ? '—' : round($skills, 1) . '/100',
+            get_string('quiz', 'aienglishlesson') => !isset($content['quiz']) ?
+                get_string('noquizlegacy', 'aienglishlesson') : ($quizscore === null ? '—' : $quizscore . '/100'),
+            get_string('finalgrade', 'aienglishlesson') => $grade && $grade->versionid == $version->id ?
+                $grade->grade . '/100' : '—',
+        ];
+        $cards = '';
+        foreach ($items as $label => $value) {
+            $cards .= html_writer::div(html_writer::tag('h3', s($label)) . html_writer::tag('p', s($value)), 'aiel-grade-card');
+        }
+        echo html_writer::div($cards, 'aiel-grades');
+    }
     if (!$manage) { $content = \mod_aienglishlesson\local\lesson::student_data($content); }
     $section = max(0, min(count($content['sections']) - 1, optional_param('section', 0, PARAM_INT)));
     $data = $content['sections'][$section];
@@ -126,6 +153,7 @@ else {
             $recording = reset($recordings);
             $data['recordingurl'] = moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'recording', $response->id, '/', $recording->get_filename())->out(false);
         }
+        $data['deletelabel'] = get_string($recordings ? 'clearresponserecording' : 'clearresponse', 'aienglishlesson');
         $images = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'image', $response->id, 'id', false);
         if ($images) {
             $image = reset($images);
@@ -134,6 +162,10 @@ else {
         }
     } else { unset($data['feedback']); }
     $data['teacher'] = $manage; $data['id'] = $id; $data['version'] = $version->id;
+    if (isset($content['quiz'])) {
+        $data['quizurl'] = (new moodle_url('/mod/aienglishlesson/quiz.php',
+            ['id' => $id, 'version' => $version->id]))->out(false);
+    }
     $data['canuploadaudio'] = $manage && $version->status === 'draft' && !empty($data['audioscript']);
     $data['section'] = $section; $data['sesskey'] = sesskey();
     $data['actionurl'] = (new moodle_url('/mod/aienglishlesson/action.php'))->out(false);
@@ -153,6 +185,7 @@ else {
             $data[$key] = (new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id, 'version' => $version->id, 'section' => $i]))->out(false);
         }
     }
+    if ($section === count($content['sections']) - 1 && isset($data['quizurl'])) { $data['next'] = $data['quizurl']; }
     echo $OUTPUT->render_from_template('mod_aienglishlesson/lesson', $data);
 }
 echo $OUTPUT->footer();
