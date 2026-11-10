@@ -14,6 +14,9 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_heading('aienglishlesson/providerinfo', get_string('provider', 'aienglishlesson'), get_string('providerwarning', 'aienglishlesson')));
     $settings->add(new admin_setting_configselect('aienglishlesson/provider', get_string('provider', 'aienglishlesson'), '', 'disabled',
         ['disabled' => get_string('disabled', 'aienglishlesson'), 'gemini' => 'Gemini Developer API']));
+    $settings->add(new admin_setting_configselect('aienglishlesson/assessmentprovider',
+        get_string('assessmentprovider', 'aienglishlesson'), get_string('assessmentprovider_desc', 'aienglishlesson'),
+        'disabled', ['disabled' => get_string('disabled', 'aienglishlesson'), 'gemini' => 'Gemini Developer API']));
     foreach (['eligible', 'freeonly'] as $key) {
         $settings->add(new admin_setting_configcheckbox('aienglishlesson/' . $key, get_string($key, 'aienglishlesson'), get_string($key . '_desc', 'aienglishlesson'), 0));
     }
