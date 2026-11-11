@@ -2,7 +2,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 import hashlib
 base = Path('aienglishlesson')
-target = Path('dist/mod_aienglishlesson-0.6.1.zip')
+target = Path('dist/mod_aienglishlesson-0.6.2.zip')
 target.parent.mkdir(exist_ok=True)
 with ZipFile(target, 'w', ZIP_DEFLATED) as z:
     for p in sorted(base.rglob('*')):
