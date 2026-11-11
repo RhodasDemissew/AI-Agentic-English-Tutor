@@ -81,6 +81,9 @@ if ($action === 'generate' || $action === 'resume') {
             $DB->insert_record('aiel_progress', (object)($record + ['lessonid' => $cm->instance, 'timemodified' => time()]));
         }
     } finally { $lock->release(); }
+    if ($section === count($content['sections']) - 1 && isset($content['quiz'])) {
+        redirect(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $versionid]));
+    }
     $back->param('section', min($section + 1, count($content['sections']) - 1));
 } else { throw new moodle_exception('invalidrequest'); }
 redirect($back);
