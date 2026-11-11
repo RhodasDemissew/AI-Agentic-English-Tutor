@@ -241,9 +241,7 @@ class gemini implements provider {
                     . 'Provide substantial writing guidance, a model answer, and a recap with useful self-checks. '
                     . 'Reading, listening, speaking, and writing must each have a clear practice task. '
                     . 'Reading, listening and writing require teacher answers. ');
-            // The second group contains two full spoken scripts as well as the reading passage.
-            // Gemini 3.5 Flash supports a larger response than the original 8192-token cap.
-            $tokens = $index === 1 && $c->model === 'gemini-3.5-flash' ? 16384 : 8192;
+            $tokens = self::section_token_limit($c->model, $index);
             $result = $this->generate_json($c, array_merge($sourceparts, [['text' => $prompt]]), $tokens);
             if (($result['readable'] ?? true) === false || !is_array($result['sections'] ?? null) ||
                     count($result['sections']) !== 5) { throw new provider_error('response'); }
@@ -280,6 +278,11 @@ class gemini implements provider {
         // Validate the complete quiz alongside the previously validated section groups before saving it.
         self::assemble($activity, ['sections' => $sections, 'quiz' => $quiz['quiz']]);
         return ['quiz' => $quiz['quiz']];
+    }
+
+    /** Keep the long spoken-script stage within the configured model's output capacity. */
+    public static function section_token_limit(string $model, int $index): int {
+        return $index === 1 && in_array($model, ['gemini-3.5-flash', 'gemini-3.5-flash-lite'], true) ? 16384 : 8192;
     }
 
     private function generate_json(\stdClass $c, array $parts, int $tokens): array {
