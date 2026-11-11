@@ -210,7 +210,7 @@ class gemini implements provider {
         $young = $grade === 'KG' || (preg_match('/^G([1-4])$/', $grade) === 1);
         $older = $grade === 'adult' || (preg_match('/^G(1[0-2]|[8-9])$/', $grade) === 1);
         $words = $young ? '120-180' : ($older ? '350-500' : '240-350');
-        $speechwords = $young ? '200-230' : ($older ? '350-400' : '270-320');
+        $speech = self::speech_word_guidance($grade);
         $settings = json_encode(['title' => $activity->name, 'grade' => $grade,
             'englishlevel' => $activity->proficiency, 'topic' => $activity->topic,
             'minutes' => $activity->duration, 'instructions' => $activity->instructions,
@@ -237,7 +237,9 @@ class gemini implements provider {
                 . ($index === 0 ? 'Include 4-6 vocabulary cards, a multi-paragraph explanation, a fully worked example with steps, '
                     . 'guided practice and a useful hint. Set audioscript to an empty string when no audio is needed. '
                     : 'Write a reading passage of ' . $words . ' words with a comprehension question and answer. '
-                    . 'Give listening and speaking distinct spoken scripts of ' . $speechwords . ' words each, near 1:30 to 3:00 at a measured pace. '
+                    . 'Give listening and speaking distinct spoken scripts of ' . $speech['range'] . ' words each, near 1:30 to 3:00 at a measured pace. '
+                    . 'Put the complete spoken text in each audioscript field. The minimum of ' . $speech['minimum'] .
+                    ' words per field is only a validity floor; aim for the longer requested range. '
                     . 'Provide substantial writing guidance, a model answer, and a recap with useful self-checks. '
                     . 'Reading, listening, speaking, and writing must each have a clear practice task. '
                     . 'Reading, listening and writing require teacher answers. ');
@@ -257,8 +259,9 @@ class gemini implements provider {
                         !is_array($section['cards'] ?? null)) { throw new provider_error('response'); }
                 if ($index === 1 && in_array($section['kind'], ['listening', 'speaking'], true)) {
                     $script = $section['audioscript'] ?? '';
-                    $minimum = $young ? 180 : ($older ? 330 : 250);
-                    if (!is_string($script) || str_word_count($script) < $minimum) { throw new provider_error('shortaudio'); }
+                    // Preserve a reviewable draft when the model misses the requested duration.
+                    // Teachers see a warning and can expand the script before publishing.
+                    if (!is_string($script) || trim($script) === '') { throw new provider_error('shortaudio'); }
                 }
             }
             return ['sections' => $result['sections']];
@@ -283,6 +286,15 @@ class gemini implements provider {
     /** Keep the long spoken-script stage within the configured model's output capacity. */
     public static function section_token_limit(string $model, int $index): int {
         return $index === 1 && in_array($model, ['gemini-3.5-flash', 'gemini-3.5-flash-lite'], true) ? 16384 : 8192;
+    }
+
+    /** Minimum is a usable measured-pace script; target retains the longer lesson goal. */
+    public static function speech_word_guidance(string $grade): array {
+        $young = $grade === 'KG' || preg_match('/^G[1-4]$/', $grade) === 1;
+        $older = $grade === 'adult' || preg_match('/^G(1[0-2]|[8-9])$/', $grade) === 1;
+        return $young ? ['range' => '200-230', 'minimum' => 180, 'target' => 200] :
+            ($older ? ['range' => '350-400', 'minimum' => 210, 'target' => 350] :
+                ['range' => '270-320', 'minimum' => 200, 'target' => 270]);
     }
 
     private function generate_json(\stdClass $c, array $parts, int $tokens): array {
