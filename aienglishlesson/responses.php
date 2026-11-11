@@ -2,38 +2,76 @@
 require_once('../../config.php');
 $id = required_param('id', PARAM_INT);
 $page = max(0, optional_param('page', 0, PARAM_INT));
+$studentid = max(0, optional_param('student', 0, PARAM_INT));
 $cm = get_coursemodule_from_id('aienglishlesson', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
 require_login($course, true, $cm);
-$context = context_module::instance($id);
+$context = context_module::instance($cm->id);
 require_capability('mod/aienglishlesson:manage', $context);
+$versions = $DB->get_records('aiel_versions', ['lessonid' => $cm->instance, 'status' => 'published'], 'id DESC', '*', 0, 1);
+$currentversion = $versions ? reset($versions) : false;
 if (data_submitted()) {
     require_sesskey();
+    if (!$currentversion || !$studentid) { throw new moodle_exception('invalidrequest'); }
     $attemptid = required_param('attempt', PARAM_INT);
-    $attempt = $DB->get_record('aiel_responses', ['id' => $attemptid, 'lessonid' => $cm->instance], '*', MUST_EXIST);
+    $attempt = $DB->get_record('aiel_responses', ['id' => $attemptid, 'lessonid' => $cm->instance,
+        'versionid' => $currentversion->id, 'userid' => $studentid], '*', MUST_EXIST);
     $score = required_param('score', PARAM_INT);
     $feedback = required_param('teacherfeedback', PARAM_RAW_TRIMMED);
     \mod_aienglishlesson\local\assessment::approve($attempt, $score, $feedback, $USER->id);
-    $return = new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id, 'page' => $page]);
+    $return = new moodle_url('/mod/aienglishlesson/responses.php',
+        ['id' => $id, 'page' => $page, 'student' => $studentid]);
     $return->set_anchor('response-' . $attemptid);
     redirect($return);
 }
-$PAGE->set_url('/mod/aienglishlesson/responses.php', ['id' => $id]);
+$PAGE->set_url('/mod/aienglishlesson/responses.php', ['id' => $id, 'page' => $page, 'student' => $studentid]);
 $PAGE->set_title(get_string('reviewresponses', 'aienglishlesson'));
 $PAGE->set_heading($course->fullname);
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('reviewresponses', 'aienglishlesson'));
-echo html_writer::link(new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id]), get_string('backtolesson', 'aienglishlesson'));
-$where = 'r.lessonid = :lessonid AND r.id = (SELECT MAX(newest.id) FROM {aiel_responses} newest
-    WHERE newest.versionid = r.versionid AND newest.userid = r.userid AND newest.sectionno = r.sectionno)';
-$total = $DB->count_records_sql('SELECT COUNT(1) FROM {aiel_responses} r WHERE ' . $where, ['lessonid' => $cm->instance]);
-echo $OUTPUT->paging_bar($total, $page, 25, $PAGE->url);
+if (!$currentversion) {
+    echo $OUTPUT->notification(get_string('nopublished', 'aienglishlesson'), 'info');
+    echo $OUTPUT->footer();
+    exit;
+}
+if (!$studentid) {
+    echo html_writer::link(new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id]),
+        get_string('backtolesson', 'aienglishlesson'));
+    echo html_writer::tag('p', get_string('selectstudentreview', 'aienglishlesson'));
+    $total = $DB->count_records_sql('SELECT COUNT(DISTINCT userid) FROM {aiel_responses} WHERE versionid = :versionid',
+        ['versionid' => $currentversion->id]);
+    $listurl = new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id]);
+    echo $OUTPUT->paging_bar($total, $page, 25, $listurl);
+    $students = $DB->get_records_sql('SELECT u.id, u.firstname, u.lastname FROM {user} u
+        WHERE u.id IN (SELECT r.userid FROM {aiel_responses} r WHERE r.versionid = :versionid)
+        ORDER BY u.lastname, u.firstname, u.id', ['versionid' => $currentversion->id], $page * 25, 25);
+    if (!$students) { echo $OUTPUT->notification(get_string('noresponses', 'aienglishlesson'), 'info'); }
+    echo html_writer::start_tag('ul', ['class' => 'aiel-student-list']);
+    foreach ($students as $student) {
+        $studenturl = new moodle_url('/mod/aienglishlesson/responses.php',
+            ['id' => $id, 'page' => $page, 'student' => $student->id]);
+        echo html_writer::tag('li', html_writer::link($studenturl, s(fullname($student))));
+    }
+    echo html_writer::end_tag('ul');
+    echo $OUTPUT->footer();
+    exit;
+}
+$user = $DB->get_record('user', ['id' => $studentid], '*', MUST_EXIST);
+$hasresponses = $DB->record_exists('aiel_responses', ['versionid' => $currentversion->id, 'userid' => $studentid]);
+if (!$hasresponses) { throw new moodle_exception('invalidrequest'); }
+echo html_writer::link(new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id, 'page' => $page]),
+    get_string('backtostudents', 'aienglishlesson'), ['class' => 'btn btn-secondary mb-3']);
+echo $OUTPUT->heading(fullname($user), 3);
+$where = 'r.versionid = :versionid AND r.userid = :userid AND r.id =
+    (SELECT MAX(newest.id) FROM {aiel_responses} newest WHERE newest.versionid = r.versionid
+        AND newest.userid = r.userid AND newest.sectionno = r.sectionno)';
+$actionurl = new moodle_url('/mod/aienglishlesson/responses.php',
+    ['id' => $id, 'page' => $page, 'student' => $studentid]);
 foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $where .
-        ' ORDER BY r.timemodified DESC, r.id DESC', ['lessonid' => $cm->instance], $page * 25, 25) as $r) {
+        ' ORDER BY r.sectionno ASC', ['versionid' => $currentversion->id, 'userid' => $studentid]) as $r) {
     \mod_aienglishlesson\local\assessment::recover_stale($r->id);
     if ($r->aistatus === 'running' && $r->timemodified < time() - 180) { $r->aistatus = 'failed'; }
-    $user = $DB->get_record('user', ['id' => $r->userid], '*', MUST_EXIST);
-    $version = $DB->get_record('aiel_versions', ['id' => $r->versionid], '*', MUST_EXIST);
+    $version = $currentversion;
     $lesson = \mod_aienglishlesson\local\lesson::validate($version->content);
     echo html_writer::start_tag('section', ['class' => 'aiel-practice', 'id' => 'response-' . $r->id]);
     echo html_writer::tag('h3', s(fullname($user) . ' — ' . $lesson['sections'][$r->sectionno]['title']));
@@ -63,7 +101,7 @@ foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $whe
         'userid' => $r->userid, 'sectionno' => $r->sectionno], 'id DESC', '*', 0, 1);
     if ($latest && (int)reset($latest)->id === (int)$r->id && $version->status === 'published' &&
             in_array($lesson['sections'][$r->sectionno]['kind'], \mod_aienglishlesson\local\assessment::SKILLS, true)) {
-        echo html_writer::start_tag('form', ['method' => 'post', 'action' => $PAGE->url->out(false)]);
+        echo html_writer::start_tag('form', ['method' => 'post', 'action' => $actionurl->out(false)]);
         foreach (['sesskey' => sesskey(), 'attempt' => $r->id] as $name => $value) {
             echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => $name, 'value' => $value]);
         }
