@@ -46,6 +46,11 @@ class assessment {
         return $hasquiz ? ($skills + $quiz) / 2 : $skills;
     }
 
+    public static function is_nonattempt(string $response, bool $hasmedia): bool {
+        return !$hasmedia && preg_match('/^(?:idk|i\s+(?:do\s+not|don.t)\s+know|no\s+idea|\?+)\s*[.!?]*$/iu',
+            trim($response)) === 1;
+    }
+
     public static function evaluate(int $attemptid, ?gemini $provider = null): void {
         global $DB;
         if (!self::enabled()) { return; }
@@ -78,8 +83,10 @@ class assessment {
             $rubric = self::rubrics($version)[$section['kind']] ?? '';
             $rubric .= "\nGrade band: " . $activity->gradeband . '; English level: ' . $activity->proficiency .
                 '. Judge language and task completion at this learner level.';
-            $result = ($provider ?? new gemini())->assess($section, $attempt->response,
-                $rubric, $media);
+            $nonattempt = self::is_nonattempt($attempt->response, (bool)$media);
+            $result = $nonattempt ? ['score' => 0, 'confidence' => 100,
+                'feedback' => get_string('nonattemptfeedback', 'aienglishlesson')] :
+                ($provider ?? new gemini())->assess($section, $attempt->response, $rubric, $media);
             if ($DB->record_exists('aiel_responses', ['id' => $attemptid])) {
                 $DB->update_record('aiel_responses', (object)['id' => $attemptid, 'aistatus' => 'succeeded',
                     'aiscore' => $result['score'], 'aifeedback' => $result['feedback'],
