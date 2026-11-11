@@ -1,4 +1,5 @@
 .aiel-layout {display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,3fr);gap:2rem;margin:2rem 0;}
+.aiel-brand{margin:0 0 .5rem;}.aiel-logo{display:block;width:180px;max-width:100%;height:auto;}
 .aiel-nav {background:#f3f6fa;padding:1.25rem;border-radius:.6rem;align-self:start;}
 .aiel-nav li {margin-bottom:.8rem;}
 .aiel-nav [aria-current] {font-weight:700;text-decoration:underline;}
@@ -23,4 +24,15 @@
 .aiel-quiz-choice{display:block;padding:.7rem 1rem;margin:.35rem 0;border:1px solid #c7d5df;border-radius:.5rem;cursor:pointer;}
 .aiel-quiz-choice:hover,.aiel-quiz-choice:focus-within{background:#eff8f7;border-color:#327d76;}
 .aiel-quiz-choice input{margin-right:.6rem;}
+.aiel-quiz-choice--reviewed{cursor:default;}
+.aiel-quiz-choice--reviewed:hover{background:inherit;border-color:#c7d5df;}
+.aiel-quiz-choice--correct{background:#e5f5eb;border-color:#237044;color:#174d31;}
+.aiel-quiz-choice--incorrect{background:#fdecec;border-color:#b83c3c;color:#842626;}
+.aiel-quiz-choice--correct:hover{background:#e5f5eb;border-color:#237044;}
+.aiel-quiz-choice--incorrect:hover{background:#fdecec;border-color:#b83c3c;}
+.aiel-choice-status{display:block;font-size:.9rem;margin-top:.3rem;}
+.aiel-student-list{list-style:none;padding:0;max-width:700px;}
+.aiel-student-list li{margin:.6rem 0;}
+.aiel-student-list a{display:block;padding:1rem 1.2rem;border:1px solid #c7d5df;border-radius:.5rem;font-weight:600;text-decoration:none;}
+.aiel-student-list a:hover,.aiel-student-list a:focus{background:#eff8f7;border-color:#327d76;text-decoration:underline;}
 @media(max-width:700px){.aiel-layout{grid-template-columns:1fr;gap:1rem;margin:1rem 0;}.aiel-nav ol{columns:1;}.aiel-content{font-size:1.05rem;}.aiel-card,.aiel-example,.aiel-practice{padding:1rem;}.aiel-pagination{flex-wrap:wrap;}.aiel-grades{grid-template-columns:1fr;}}
