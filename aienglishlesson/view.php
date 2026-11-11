@@ -69,6 +69,14 @@ if ($manage) {
     }
     if ($version && $version->status === 'draft') {
         $draftcontent = \mod_aienglishlesson\local\lesson::validate($version->content);
+        $speechtarget = \mod_aienglishlesson\local\gemini::speech_word_guidance((string)$activity->gradeband)['target'];
+        foreach ($draftcontent['sections'] as $sectiondata) {
+            if (in_array($sectiondata['kind'], ['listening', 'speaking'], true) &&
+                    str_word_count($sectiondata['audioscript'] ?? '') < $speechtarget) {
+                echo $OUTPUT->notification(get_string('shortaudioreview', 'aienglishlesson'), 'warning');
+                break;
+            }
+        }
         if (isset($draftcontent['quiz'])) {
             echo html_writer::link(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $version->id]),
                 get_string('reviewquiz', 'aienglishlesson'), ['class' => 'btn btn-secondary my-2']);
