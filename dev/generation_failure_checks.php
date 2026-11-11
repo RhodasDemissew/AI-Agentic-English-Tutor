@@ -30,4 +30,10 @@ try {
     if ($e->getMessage() !== 'blocked') { throw new RuntimeException('Wrong blocked-prompt diagnostic'); }
 }
 gemini::check_generation_finish(['candidates' => [['finishReason' => 'STOP']]]);
+if (gemini::section_token_limit('gemini-3.5-flash-lite', 1) !== 16384 ||
+        gemini::section_token_limit('gemini-3.5-flash', 1) !== 16384 ||
+        gemini::section_token_limit('gemini-3.5-flash-lite', 0) !== 8192 ||
+        gemini::section_token_limit('gemini-2.5-flash', 1) !== 8192) {
+    throw new RuntimeException('Wrong section token allowance');
+}
 echo "Generation failure checks passed\n";
