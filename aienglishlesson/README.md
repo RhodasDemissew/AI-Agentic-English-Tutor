@@ -1,4 +1,4 @@
-# AI English Lessons 0.6.2
+# AI English Lessons 0.6.3
 
 Moodle 4.4 activity with staged lesson generation, teacher review, four assessed skills, a ten-question quiz, cached audio and one final gradebook item.
 
@@ -25,3 +25,5 @@ This package has local lint and smoke checks. A live Moodle 4.4 site and real pr
 Version 0.6.1 raises the response allowance for the long second generation stage on Gemini 3.5 Flash and reports distinct output limit, content restriction and short audio script failures. Install the updated ZIP and retry generation if the previous attempt failed at stage two.
 
 Version 0.6.2 defaults new installations to Gemini 3.5 Flash Lite and gives it the same response allowance for the long second stage. Existing site settings are preserved: after upgrading, change Model ID to `gemini-3.5-flash-lite` and save it. The speech model setting is separate and is unchanged.
+
+Version 0.6.3 preserves a draft when generated listening or speaking scripts are shorter than the target, and warns the teacher to review and expand them before publishing. Missing scripts still fail generation. Local eSpeak NG reads new audio at a measured 120 words per minute. Cloud speech remains a separate preparation step after the draft is saved.
