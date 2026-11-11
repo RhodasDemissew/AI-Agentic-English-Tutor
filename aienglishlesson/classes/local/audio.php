@@ -59,7 +59,7 @@ class audio {
                     continue;
                 }
                 file_put_contents($script, $section['audioscript']);
-                $process = proc_open([$binary, '-b', '1', '-v', 'en-us', '-s', '140', '-f', $script, '-w', $wav],
+                $process = proc_open([$binary, '-b', '1', '-v', 'en-us', '-s', '120', '-f', $script, '-w', $wav],
                     [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
                 if (!is_resource($process)) { throw new \RuntimeException('speech unavailable'); }
                 $start = time();
