@@ -16,7 +16,9 @@ class responses {
     public static function save(\stdClass $version, int $section, int $userid, string $response, ?array $upload = null, ?array $image = null): int {
         global $DB;
         $data = lesson::validate($version->content);
-        if ($version->status !== 'published' || !isset($data['sections'][$section]) || empty($data['sections'][$section]['practice']) || strlen($response) > 12000) {
+        if ($version->status !== 'published' || !isset($data['sections'][$section]) ||
+                !in_array($data['sections'][$section]['kind'], assessment::SKILLS, true) ||
+                empty($data['sections'][$section]['practice']) || strlen($response) > 12000) {
             throw new \moodle_exception('invalidrequest');
         }
         $hasfile = $upload && ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
