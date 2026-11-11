@@ -99,6 +99,9 @@ class jobs {
                 if ($content !== null) { audio::queue($versionid); }
             } finally { $lock->release(); }
         } catch (\Throwable $e) {
+            if (!($e instanceof provider_error)) {
+                error_log(self::failure_log_reference($id, (int)$job->stage, $e));
+            }
             $lock = \core\lock\lock_config::get_lock_factory('mod_aienglishlesson')->get_lock('lesson' . $job->lessonid, 10);
             if (!$lock) { throw new \moodle_exception('busy', 'aienglishlesson'); }
             try {
@@ -115,5 +118,11 @@ class jobs {
             } finally { $lock->release(); }
             if ($retry && !self::direct()) { throw new \moodle_exception('retrying', 'aienglishlesson'); }
         }
+    }
+
+    /** Exclude exception messages and arguments: they may contain source text or credentials. */
+    public static function failure_log_reference(int $jobid, int $stage, \Throwable $e): string {
+        return 'mod_aienglishlesson job=' . $jobid . ' stage=' . ($stage + 1) .
+            ' exception=' . get_class($e) . ' origin=' . basename($e->getFile()) . ':' . $e->getLine();
     }
 }
