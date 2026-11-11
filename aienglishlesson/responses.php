@@ -42,7 +42,7 @@ if (!$studentid) {
         ['versionid' => $currentversion->id]);
     $listurl = new moodle_url('/mod/aienglishlesson/responses.php', ['id' => $id]);
     echo $OUTPUT->paging_bar($total, $page, 25, $listurl);
-    $students = $DB->get_records_sql('SELECT u.id, u.firstname, u.lastname FROM {user} u
+    $students = $DB->get_records_sql('SELECT u.* FROM {user} u
         WHERE u.id IN (SELECT r.userid FROM {aiel_responses} r WHERE r.versionid = :versionid)
         ORDER BY u.lastname, u.firstname, u.id', ['versionid' => $currentversion->id], $page * 25, 25);
     if (!$students) { echo $OUTPUT->notification(get_string('noresponses', 'aienglishlesson'), 'info'); }
