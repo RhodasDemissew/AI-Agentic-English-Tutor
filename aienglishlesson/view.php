@@ -57,7 +57,9 @@ if ($manage) {
         } else if ($diagnostic) {
             $diagnostic = get_string('diagnostic_internal', 'aienglishlesson');
         }
-        echo html_writer::div(s(get_string('jobstatus', 'aienglishlesson', (object)['status' => $job->status, 'attempts' => $job->attempts, 'diagnostic' => $diagnostic])), 'alert alert-info');
+        echo html_writer::div(s(get_string('jobstatus', 'aienglishlesson', (object)['status' => $job->status,
+            'stage' => min(3, (int)$job->stage + 1), 'attempts' => $job->attempts,
+            'diagnostic' => $diagnostic, 'jobid' => $job->id])), 'alert alert-info');
     }
     $files = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'source', 0, 'id', false);
     foreach ($files as $file) {
