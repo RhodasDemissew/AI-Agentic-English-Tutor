@@ -65,8 +65,20 @@ foreach ($content['quiz'] as $i => $question) {
     foreach ($question['choices'] as $j => $choice) {
         $input = ($manage || $review) ? '' : html_writer::empty_tag('input', ['type' => 'radio', 'name' => 'answer_' . $i,
             'value' => $j, 'required' => 'required', 'id' => 'aiel-q-' . $i . '-' . $j]);
-        echo html_writer::tag('label', $input . ' ' . s($choice), ['for' => 'aiel-q-' . $i . '-' . $j,
-            'class' => 'aiel-quiz-choice']);
+        $class = 'aiel-quiz-choice' . ($review ? ' aiel-quiz-choice--reviewed' : '');
+        $status = '';
+        if ($review && $j === $question['correct']) {
+            $class .= ' aiel-quiz-choice--correct';
+            $status = html_writer::tag('strong', get_string('quizcorrect', 'aienglishlesson'),
+                ['class' => 'aiel-choice-status']);
+        } else if ($review && !$manage && ($saved[$i] ?? -1) === $j) {
+            $class .= ' aiel-quiz-choice--incorrect';
+            $status = html_writer::tag('strong', get_string('quizincorrect', 'aienglishlesson'),
+                ['class' => 'aiel-choice-status']);
+        }
+        $attrs = ['class' => $class];
+        if ($input !== '') { $attrs['for'] = 'aiel-q-' . $i . '-' . $j; }
+        echo html_writer::tag($input !== '' ? 'label' : 'div', $input . ' ' . s($choice) . $status, $attrs);
     }
     if ($review) {
         if (!$manage) {
