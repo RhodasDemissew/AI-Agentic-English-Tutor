@@ -19,12 +19,12 @@
     {{#audiourl}}<section><h3>{{#str}}listen, aienglishlesson{{/str}}</h3><audio controls preload="none" src="{{audiourl}}">{{#str}}listen, aienglishlesson{{/str}}</audio><p>{{#str}}localvoice, aienglishlesson{{/str}}</p><details><summary>{{#str}}transcript, aienglishlesson{{/str}}</summary><div class="aiel-text">{{audioscript}}</div></details></section>{{/audiourl}}
     <div class="aiel-text">{{body}}</div>
     <div class="aiel-cards">{{#cards}}<section class="aiel-card"><h3>{{term}}</h3><details><summary>{{#str}}showmeaning, aienglishlesson{{/str}}</summary><p>{{meaning}}</p><p>{{example}}</p></details></section>{{/cards}}</div>
-    {{#example}}<section class="aiel-example"><h3>{{#str}}example, aienglishlesson{{/str}}</h3><div class="aiel-text">{{example}}</div></section>{{/example}}
+    {{#showexample}}<section class="aiel-example"><h3>{{#str}}example, aienglishlesson{{/str}}</h3><div class="aiel-text">{{showexample}}</div></section>{{/showexample}}
     {{#simpler}}<details><summary>{{#str}}simpler, aienglishlesson{{/str}}</summary><div class="aiel-text">{{simpler}}</div></details>{{/simpler}}
     {{#extraexample}}<details><summary>{{#str}}extraexample, aienglishlesson{{/str}}</summary><div class="aiel-text">{{extraexample}}</div></details>{{/extraexample}}
-    {{#practice}}<section class="aiel-practice"><h3>{{#str}}practice, aienglishlesson{{/str}}</h3><div class="aiel-text">{{practice}}</div>
+    {{#practice}}<section class="aiel-practice"><h3>{{#ungraded}}{{#str}}ungradedpractice, aienglishlesson{{/str}}{{/ungraded}}{{#assessed}}{{#str}}assessedtask, aienglishlesson{{/str}}{{/assessed}}</h3><div class="aiel-text">{{practice}}</div>
       {{#hint}}<details><summary>{{#str}}hint, aienglishlesson{{/str}}</summary><div class="aiel-text">{{hint}}</div></details>{{/hint}}
-      {{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form">
+      {{#assessed}}{{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form">
         <input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="submit"><input type="hidden" name="sesskey" value="{{sesskey}}">
         <label for="aiel-response">{{#str}}yourresponse, aienglishlesson{{/str}}</label>
         <textarea id="aiel-response" name="response" rows="6" maxlength="12000" class="form-control">{{response}}</textarea>
@@ -51,9 +51,9 @@
         {{#aifeedback}}<p>{{aifeedback}}</p>{{/aifeedback}}
         {{#approvedscore}}<p>{{approvedscore}}</p>{{/approvedscore}}
         {{#teacherfeedback}}<p>{{teacherfeedback}}</p>{{/teacherfeedback}}
-        {{#feedback}}<section class="aiel-example"><h4>{{#str}}feedback, aienglishlesson{{/str}}</h4><p>{{#str}}feedbacknotice, aienglishlesson{{/str}}</p><div class="aiel-text">{{feedback}}</div></section>{{/feedback}}
         <form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="clearresponse"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-outline-secondary" type="submit">{{deletelabel}}</button></form>
       {{/submitted}}
+      {{/assessed}}
     </section>{{/practice}}
     {{#teacher}}{{#answer}}<details><summary>{{#str}}answer, aienglishlesson{{/str}}</summary><div class="aiel-text">{{answer}}</div></details>{{/answer}}{{/teacher}}
     {{#cansave}}<form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="progress"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-primary my-3" type="submit">{{#str}}markcomplete, aienglishlesson{{/str}}</button></form>{{/cansave}}
