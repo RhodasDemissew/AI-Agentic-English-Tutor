@@ -36,4 +36,15 @@ if (gemini::section_token_limit('gemini-3.5-flash-lite', 1) !== 16384 ||
         gemini::section_token_limit('gemini-2.5-flash', 1) !== 8192) {
     throw new RuntimeException('Wrong section token allowance');
 }
+$expected = [
+    'KG' => ['range' => '200-230', 'minimum' => 180, 'target' => 200],
+    'G6' => ['range' => '270-320', 'minimum' => 200, 'target' => 270],
+    'G10' => ['range' => '350-400', 'minimum' => 210, 'target' => 350],
+    'adult' => ['range' => '350-400', 'minimum' => 210, 'target' => 350],
+];
+foreach ($expected as $grade => $guidance) {
+    if (gemini::speech_word_guidance($grade) !== $guidance) {
+        throw new RuntimeException('Wrong speech guidance for ' . $grade);
+    }
+}
 echo "Generation failure checks passed\n";
