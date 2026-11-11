@@ -46,6 +46,9 @@ check(quiz::score($questions, array_column($questions, 'correct')) === 100.0, 'q
 check(assessment::final_grade(80.0, 60.0, true) === 70.0, '50/50 final score');
 check(assessment::final_grade(80.0, null, true) === null, 'incomplete grade');
 check(assessment::final_grade(80.0, null, false) === 80.0, 'legacy grade');
+check(assessment::is_nonattempt('idk', false) && assessment::is_nonattempt("I don't know.", false), 'non-attempt detection');
+check(!assessment::is_nonattempt('idk', true) && !assessment::is_nonattempt('I think the answer is unclear.', false),
+    'media and substantive responses are assessed normally');
 unset($data['quiz']);
 check(!isset(lesson::validate(json_encode($data))['quiz']), 'legacy lesson');
 $data['quiz'] = $questions;
