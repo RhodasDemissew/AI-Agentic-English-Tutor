@@ -1,4 +1,4 @@
-# AI English Lessons 0.6.3
+# AI English Lessons 0.6.4
 
 Moodle 4.4 activity with staged lesson generation, teacher review, four assessed skills, a ten-question quiz, cached audio and one final gradebook item.
 
@@ -27,3 +27,5 @@ Version 0.6.1 raises the response allowance for the long second generation stage
 Version 0.6.2 defaults new installations to Gemini 3.5 Flash Lite and gives it the same response allowance for the long second stage. Existing site settings are preserved: after upgrading, change Model ID to `gemini-3.5-flash-lite` and save it. The speech model setting is separate and is unchanged.
 
 Version 0.6.3 preserves a draft when generated listening or speaking scripts are shorter than the target, and warns the teacher to review and expand them before publishing. Missing scripts still fail generation. Local eSpeak NG reads new audio at a measured 120 words per minute. Cloud speech remains a separate preparation step after the draft is saved.
+
+Version 0.6.4 labels the first five sections and recap as ungraded practice, reserves submissions for the four assessed skills, and sends learners from the recap completion button to the quiz. New lesson prompts require self-contained content and keep worked examples in their teaching section. The quiz review colors correct and incorrect choices. Teacher response review starts with a list of students in the current published version. The activity icon and lesson header use the supplied tutor branding. Existing published lesson text and grades are not rewritten.
