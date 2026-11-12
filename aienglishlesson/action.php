@@ -62,11 +62,13 @@ if ($action === 'generate' || $action === 'resume') {
                 $answer, $_FILES['recording'] ?? null, $_FILES['answerimage'] ?? null);
         } catch (moodle_exception $e) {
             $errorcode = $e->errorcode ?? '';
-            if (!in_array($errorcode, ['emptyresponse', 'recordingerror', 'imageerror'], true)) { throw $e; }
+            if (!in_array($errorcode, ['emptyresponse', 'recordingrequired', 'recordingerror',
+                    'speakingimageerror', 'imageerror'], true)) { throw $e; }
             if ($ajax) {
                 http_response_code(422);
                 header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['ok' => false, 'field' => $errorcode === 'recordingerror' ? 'recording' : 'answer',
+                echo json_encode(['ok' => false, 'field' => in_array($errorcode,
+                    ['recordingrequired', 'recordingerror', 'speakingimageerror'], true) ? 'recording' : 'answer',
                     'message' => get_string($errorcode, 'aienglishlesson')]);
                 exit;
             }
