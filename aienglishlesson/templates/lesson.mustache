@@ -30,13 +30,14 @@
       {{#hint}}<details><summary>{{#str}}hint, aienglishlesson{{/str}}</summary><div class="aiel-text">{{hint}}</div></details>{{/hint}}
       {{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form"
         data-empty-message="{{#str}}emptyresponse, aienglishlesson{{/str}}" data-saving-message="{{#str}}responsesaving, aienglishlesson{{/str}}"
-        data-connection-message="{{#str}}responseconnection, aienglishlesson{{/str}}" data-problem-message="{{#str}}responseproblem, aienglishlesson{{/str}}">
+        data-connection-message="{{#str}}responseconnection, aienglishlesson{{/str}}" data-problem-message="{{#str}}responseproblem, aienglishlesson{{/str}}"
+        data-recording-required-message="{{#str}}recordingrequired, aienglishlesson{{/str}}">
         <input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="submit"><input type="hidden" name="sesskey" value="{{sesskey}}">
-        <label for="aiel-response">{{#str}}yourresponse, aienglishlesson{{/str}}</label>
+        <label for="aiel-response">{{#speaking}}{{#str}}speakingnotes, aienglishlesson{{/str}}{{/speaking}}{{^speaking}}{{#str}}yourresponse, aienglishlesson{{/str}}{{/speaking}}</label>
         <textarea id="aiel-response" name="response" rows="6" maxlength="12000" class="form-control">{{response}}</textarea>
         <p class="aiel-field-error" data-region="answer-error" role="alert" {{^answererror}}hidden{{/answererror}}>{{answererror}}</p>
-        <label for="aiel-answerimage">{{#str}}answerimage, aienglishlesson{{/str}}</label>
-        <input class="form-control" type="file" id="aiel-answerimage" name="answerimage" accept="image/jpeg,image/png,image/webp">
+        {{^speaking}}<label for="aiel-answerimage">{{#str}}answerimage, aienglishlesson{{/str}}</label>
+        <input class="form-control" type="file" id="aiel-answerimage" name="answerimage" accept="image/jpeg,image/png,image/webp">{{/speaking}}
         {{#speaking}}<div class="aiel-recorder my-3">
           <p>{{#str}}recordingnotice, aienglishlesson{{/str}}</p>
           <button type="button" class="btn btn-secondary" data-action="record">{{#str}}record, aienglishlesson{{/str}}</button>
@@ -53,7 +54,9 @@
         <p data-region="submit-status" role="status" aria-live="polite"></p>
       </form>{{/cansave}}
       {{#submitted}}<p role="status">{{#str}}responsesaved, aienglishlesson{{/str}}</p>
+        {{#speakingmissing}}<p class="aiel-field-error" role="alert">{{speakingmissing}}</p>{{/speakingmissing}}
         {{#answercheck}}<p role="status">{{answercheck}}</p>{{/answercheck}}
+        {{#speaking}}{{#response}}<p><strong>{{#str}}speakingnotes, aienglishlesson{{/str}}</strong></p><div class="aiel-text">{{response}}</div>{{/response}}{{/speaking}}
         {{#recordingurl}}<audio controls preload="none" src="{{recordingurl}}">{{#str}}recording, aienglishlesson{{/str}}</audio>{{/recordingurl}}
         {{#imageurl}}<p><img src="{{imageurl}}" alt="{{#str}}answerimage, aienglishlesson{{/str}}" style="max-width:100%"></p>{{/imageurl}}
         {{#aiscore}}<p role="status">{{aiscore}}</p>{{/aiscore}}
