@@ -87,11 +87,34 @@ class lesson {
         return $data;
     }
     public static function student_data(array $data): array {
-        foreach ($data['sections'] as &$section) { unset($section['answer'], $section['feedback']); }
+        foreach ($data['sections'] as &$section) {
+            unset($section['answer'], $section['feedback']);
+            if (!in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true)) {
+                unset($section['practice'], $section['hint']);
+            }
+        }
         if (isset($data['quiz'])) {
             foreach ($data['quiz'] as &$question) { unset($question['correct'], $question['explanation']); }
             unset($question);
         }
         return $data;
+    }
+
+    /** Identify assessed questions that may rely on a visual the lesson does not display. Review only. */
+    public static function visual_question_references(array $data): array {
+        $references = [];
+        $visualword = '/\b(picture|pictures|pictured|image|images|photo|photos|photograph|photographs|diagram|diagrams|figure|figures|illustration|illustrations|drawing|drawings|chart|charts|graph|graphs|map|maps)\b/iu';
+        foreach ($data['sections'] ?? [] as $i => $section) {
+            if (in_array($section['kind'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) &&
+                    preg_match($visualword, $section['practice'] ?? '')) {
+                $references[] = ['type' => 'section', 'index' => $i];
+            }
+        }
+        foreach ($data['quiz'] ?? [] as $i => $question) {
+            if (preg_match($visualword, implode(' ', array_merge([$question['question'] ?? ''], $question['choices'] ?? [])))) {
+                $references[] = ['type' => 'quiz', 'index' => $i];
+            }
+        }
+        return $references;
     }
 }
