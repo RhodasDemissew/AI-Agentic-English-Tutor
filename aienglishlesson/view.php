@@ -72,6 +72,17 @@ if ($manage) {
     }
     if ($version && $version->status === 'draft') {
         $draftcontent = \mod_aienglishlesson\local\lesson::validate($version->content);
+        $visualrefs = \mod_aienglishlesson\local\lesson::visual_question_references($draftcontent);
+        if ($visualrefs) {
+            $locations = [];
+            foreach ($visualrefs as $ref) {
+                $locations[] = $ref['type'] === 'quiz' ?
+                    get_string('quizquestion', 'aienglishlesson', $ref['index'] + 1) :
+                    $draftcontent['sections'][$ref['index']]['title'];
+            }
+            echo $OUTPUT->notification(get_string('visualquestionwarning', 'aienglishlesson',
+                implode(', ', $locations)), 'warning');
+        }
         $speechtarget = \mod_aienglishlesson\local\gemini::speech_word_guidance((string)$activity->gradeband)['target'];
         foreach ($draftcontent['sections'] as $sectiondata) {
             if (in_array($sectiondata['kind'], ['listening', 'speaking'], true) &&
@@ -135,7 +146,7 @@ else {
     $data['lessontitle'] = $content['title']; $data['focus'] = $content['focus'];
     $data['speaking'] = $data['kind'] === 'speaking';
     $data['assessed'] = in_array($data['kind'], \mod_aienglishlesson\local\assessment::SKILLS, true);
-    $data['ungraded'] = !$data['assessed'];
+    $data['young'] = $activity->gradeband === 'KG' || preg_match('/^G[1-4]$/', (string)$activity->gradeband) === 1;
     $data['showexample'] = $data['kind'] === 'workedexample' ? $data['example'] : '';
     $audiofile = \mod_aienglishlesson\local\audio::file($context, $version->id, $section);
     if ($audiofile) { $data['audiourl'] = moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'audio', $version->id, '/', $audiofile->get_filename())->out(false); }
@@ -186,7 +197,6 @@ else {
     }
     $data['canuploadaudio'] = $manage && $version->status === 'draft' && !empty($data['audioscript']);
     $data['section'] = $section; $data['sesskey'] = sesskey();
-    $data['practicekey'] = 'aiel-practice-' . $USER->id . '-' . $id . '-' . $version->id . '-' . $section;
     $data['actionurl'] = (new moodle_url('/mod/aienglishlesson/action.php'))->out(false);
     $data['cansave'] = $version->status === 'published' && !isguestuser() && is_enrolled($context, $USER, '', true);
     if (!empty($SESSION->aiel_formerror)) {
