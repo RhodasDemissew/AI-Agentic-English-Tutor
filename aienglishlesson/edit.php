@@ -27,8 +27,12 @@ if ($data = $form->get_data()) {
         $content['title'] = $data->title;
         $content['focus'] = $data->focus;
         foreach ($content['sections'] as $i => &$section) {
+            $assessed = in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true);
             $section['origin'] = $data->{'origin_' . $i};
-            foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) { $section[$key] = $data->{$key . '_' . $i}; }
+            foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
+                if (!$assessed && in_array($key, ['practice', 'answer', 'feedback', 'hint'], true)) { continue; }
+                $section[$key] = $data->{$key . '_' . $i};
+            }
             foreach ($section['cards'] as $j => &$card) {
                 foreach (['term', 'meaning', 'example'] as $key) { $card[$key] = $data->{'card_' . $i . '_' . $j . '_' . $key}; }
             }
@@ -59,5 +63,16 @@ if ($data = $form->get_data()) {
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('editdraft', 'aienglishlesson'));
 echo $OUTPUT->notification(get_string('exactanswerhelp', 'aienglishlesson'), 'info');
+$visualrefs = \mod_aienglishlesson\local\lesson::visual_question_references($content);
+if ($visualrefs) {
+    $locations = [];
+    foreach ($visualrefs as $ref) {
+        $locations[] = $ref['type'] === 'quiz' ?
+            get_string('quizquestion', 'aienglishlesson', $ref['index'] + 1) :
+            $content['sections'][$ref['index']]['title'];
+    }
+    echo $OUTPUT->notification(get_string('visualquestionwarning', 'aienglishlesson',
+        implode(', ', $locations)), 'warning');
+}
 $form->display();
 echo $OUTPUT->footer();
