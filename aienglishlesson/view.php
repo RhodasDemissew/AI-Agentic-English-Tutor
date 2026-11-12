@@ -173,7 +173,8 @@ else {
             $data['approvedscore'] = get_string('approvedscore', 'aienglishlesson', $response->teacherscore);
             $data['teacherfeedback'] = $response->teacherfeedback;
         }
-        $checked = \mod_aienglishlesson\local\responses::check_answer($fullcontent['sections'][$section], $response->response);
+        $checked = $data['speaking'] ? null :
+            \mod_aienglishlesson\local\responses::check_answer($fullcontent['sections'][$section], $response->response);
         if ($checked !== null) {
             $data['answercheck'] = get_string($checked ? 'answercorrect' : 'answerincorrect', 'aienglishlesson');
         }
@@ -181,6 +182,9 @@ else {
         if ($recordings) {
             $recording = reset($recordings);
             $data['recordingurl'] = moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'recording', $response->id, '/', $recording->get_filename())->out(false);
+        }
+        if ($data['speaking'] && !$recordings) {
+            $data['speakingmissing'] = get_string('speakingrecordingmissing', 'aienglishlesson');
         }
         $data['deletelabel'] = get_string($recordings ? 'clearresponserecording' : 'clearresponse', 'aienglishlesson');
         $images = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'image', $response->id, 'id', false);
@@ -204,7 +208,8 @@ else {
         unset($SESSION->aiel_formerror);
         if ($formerror['version'] == $version->id && $formerror['section'] == $section && $data['assessed']) {
             $data['response'] = $formerror['response'];
-            $data[$formerror['code'] === 'recordingerror' ? 'recordingerror' : 'answererror'] =
+            $data[in_array($formerror['code'], ['recordingrequired', 'recordingerror',
+                'speakingimageerror'], true) ? 'recordingerror' : 'answererror'] =
                 get_string($formerror['code'], 'aienglishlesson');
         }
     }
@@ -212,8 +217,9 @@ else {
     $completed = array_column($done, 'sectionno');
     $data['progress'] = get_string('progresscount', 'aienglishlesson', (object)['done' => count($done), 'total' => count($content['sections'])]);
     $data['masterynotice'] = get_string('assessmentnotice', 'aienglishlesson');
-    $data['ainotice'] = get_string(\mod_aienglishlesson\local\assessment::enabled() ?
-        'aienabledstudent' : 'noaistudent', 'aienglishlesson');
+    $data['ainotice'] = get_string($data['speaking'] ? 'speakingainotice' :
+        (\mod_aienglishlesson\local\assessment::enabled() ? 'aienabledstudent' : 'noaistudent'),
+        'aienglishlesson');
     foreach ($content['sections'] as $i => $part) {
         $data['navigation'][] = ['title' => $part['title'], 'current' => $i === $section, 'done' => in_array($i, $completed),
             'url' => (new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id, 'version' => $version->id, 'section' => $i]))->out(false)];
