@@ -55,17 +55,42 @@ if ($action === 'generate' || $action === 'resume') {
     $section = required_param('section', PARAM_INT);
     $v = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance, 'status' => 'published'], '*', MUST_EXIST);
     if ($action === 'submit') {
-        $attemptid = \mod_aienglishlesson\local\responses::save($v, $section, $USER->id,
-            required_param('response', PARAM_RAW_TRIMMED), $_FILES['recording'] ?? null, $_FILES['answerimage'] ?? null);
+        $ajax = optional_param('ajax', 0, PARAM_BOOL);
+        $answer = required_param('response', PARAM_RAW_TRIMMED);
+        try {
+            $attemptid = \mod_aienglishlesson\local\responses::save($v, $section, $USER->id,
+                $answer, $_FILES['recording'] ?? null, $_FILES['answerimage'] ?? null);
+        } catch (moodle_exception $e) {
+            $errorcode = $e->errorcode ?? '';
+            if (!in_array($errorcode, ['emptyresponse', 'recordingerror', 'imageerror'], true)) { throw $e; }
+            if ($ajax) {
+                http_response_code(422);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'field' => $errorcode === 'recordingerror' ? 'recording' : 'answer',
+                    'message' => get_string($errorcode, 'aienglishlesson')]);
+                exit;
+            }
+            $SESSION->aiel_formerror = ['version' => $versionid, 'section' => $section,
+                'code' => $errorcode, 'response' => $answer];
+            $back->params(['section' => $section, 'version' => $versionid]);
+            $back->set_anchor('aiel-practice');
+            redirect($back);
+        }
         if (\mod_aienglishlesson\local\assessment::enabled()) {
             \core\session\manager::write_close();
             \core_php_time_limit::raise(180);
             \mod_aienglishlesson\local\assessment::evaluate($attemptid);
         }
+        if ($ajax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true, 'attemptid' => $attemptid]);
+            exit;
+        }
     } else {
         \mod_aienglishlesson\local\assessment::clear_latest($context, $versionid, $USER->id, $section);
     }
     $back->params(['section' => $section, 'version' => $versionid]);
+    $back->set_anchor('aiel-practice');
 } else if ($action === 'progress') {
     if (isguestuser() || !is_enrolled($context, $USER, '', true)) { throw new required_capability_exception($context, 'mod/aienglishlesson:view', 'nopermissions', ''); }
     $versionid = required_param('version', PARAM_INT);
