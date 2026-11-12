@@ -225,7 +225,8 @@ class gemini implements provider {
             . 'Match the grade band and English level: younger learners need concrete words, shorter sentences and easier questions; '
             . 'older and advanced learners need deeper analysis, complex vocabulary and evidence-based questions. '
             . 'Plan for the full lesson duration. Use verifiable source facts and never invent page references. '
-            . 'The lesson must be self-contained: include every passage, definition, example and fact needed to answer its practice and quiz questions in the generated lesson. '
+            . 'The lesson must be self-contained: include every passage, definition, example and fact needed to answer its assessed tasks and quiz questions in the generated lesson. '
+            . 'Never require a learner to see a picture, image, diagram or chart to answer a question; describe any necessary information in lesson text or audio. '
             . 'Never tell a learner to consult a textbook, source file, page, glossary outside this lesson, or other external material. '
             . 'If the source is unreadable, return {"readable":false}. Return JSON only. Settings: ' . $settings . '. ';
         $groups = [
@@ -242,19 +243,20 @@ class gemini implements provider {
             $prompt = $base . $prior . 'Return an object {"readable":true,"sections":[...]} with exactly these five kinds in order: '
                 . implode(', ', $kinds) . '. Each section needs kind,title,body,example,practice,answer,feedback,hint,simpler,extraexample,audioscript,origin,cards. '
                 . 'Use origin source, generated or mixed. Every field except cards is a string. Cards are objects with term,meaning,example. '
-                . ($index === 0 ? 'Include 4-6 vocabulary cards whose terms and definitions cover every word needed by the vocabulary practice. '
+                . ($index === 0 ? 'Include 4-6 vocabulary cards that explain the key terms needed by the assessed tasks and quiz. '
                     . 'Write a multi-paragraph explanation and one fully worked example with steps in the workedexample section. '
                     . 'Put the worked example only in that section; set the example field empty in other sections. '
-                    . 'Add useful ungraded practice prompts and hints in the first five sections. Set audioscript to an empty string when no audio is needed. '
+                    . 'The first five sections teach the topic without practice questions. Set practice, answer, feedback and hint to empty strings in all five. Set audioscript to an empty string when no audio is needed. '
                     : 'Write a reading passage of ' . $words . ' words with a comprehension question and answer. '
                     . 'Give listening and speaking distinct spoken scripts of ' . $speech['range'] . ' words each, near 1:30 to 3:00 at a measured pace. '
                     . 'Put the complete spoken text only in each audioscript field, not in body, practice, or another learner-visible field. '
                     . 'Use body for listening and speaking instructions and context, without repeating the transcript. The minimum of ' . $speech['minimum'] .
                     ' words per field is only a validity floor; aim for the longer requested range. '
-                    . 'Provide substantial writing guidance and a recap with useful self-checks, but do not put model answers in learner-visible example fields. '
+                    . 'Provide substantial writing guidance and a concise recap of key ideas, without self-check questions or model answers in learner-visible example fields. '
                     . 'Reading, listening, speaking, and writing must each have a clear practice task. '
+                    . 'These four assessed tasks must use the lesson text or audio alone and never ask about an unseen picture, image, diagram or chart. '
                     . 'Reading, listening and writing require teacher-only answers. Set example empty in these five sections. '
-                    . 'The recap practice is ungraded and must be answerable using this lesson alone. ');
+                    . 'Set recap practice, answer, feedback and hint to empty strings. ');
             $tokens = self::section_token_limit($c->model, $index);
             $result = $this->generate_json($c, array_merge($sourceparts, [['text' => $prompt]]), $tokens);
             if (($result['readable'] ?? true) === false || !is_array($result['sections'] ?? null) ||
@@ -276,6 +278,12 @@ class gemini implements provider {
                     if (!is_string($script) || trim($script) === '') { throw new provider_error('shortaudio'); }
                 }
             }
+            foreach ($result['sections'] as &$section) {
+                if (!in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true)) {
+                    foreach (['practice', 'answer', 'feedback', 'hint'] as $field) { $section[$field] = ''; }
+                }
+            }
+            unset($section);
             return ['sections' => $result['sections']];
         }
         $sections = $partial['sections'] ?? [];
@@ -286,6 +294,7 @@ class gemini implements provider {
             'audioscript' => mb_substr($s['audioscript'] ?? '', 0, 2500),
         ]; }, $sections), JSON_UNESCAPED_UNICODE);
         $quizprompt = $base . 'Create exactly 10 distinct multiple-choice questions answerable using the generated lesson alone. '
+            . 'Do not ask learners to look at or identify anything in a picture, image, diagram, chart or other visual. '
             . 'Return {"quiz":[{"question":"...","choices":["...","...","...","..."],"correct":0,"explanation":"..."}]}. '
             . 'Correct is the zero-based index 0-3. Each item has one unambiguously correct answer and a short explanation. '
             . 'Vary correct-answer positions and cognitive demand appropriately for the grade and English level. '
