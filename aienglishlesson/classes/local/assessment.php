@@ -17,7 +17,7 @@ class assessment {
         $defaults = [
             'reading' => 'Award credit for accurate understanding, evidence from the passage, and a clear answer.',
             'listening' => 'Award credit for accurate understanding of the spoken content and a clear answer.',
-            'speaking' => 'Award credit for relevant ideas, clarity, and understandable spoken English. Do not infer pronunciation from typed notes.',
+            'speaking' => 'Use only the voice recording. Award credit for relevant spoken ideas, clarity, fluency, and understandable pronunciation at the learner level. Speaking notes are not graded.',
             'writing' => 'Award credit for relevance, organisation, vocabulary, grammar, and clear expression.',
         ];
         foreach ($defaults as $skill => $default) {
@@ -75,18 +75,23 @@ class assessment {
             $cm = get_coursemodule_from_instance('aienglishlesson', $attempt->lessonid, 0, false, MUST_EXIST);
             $context = \context_module::instance($cm->id);
             $media = [];
-            foreach (['recording', 'image'] as $area) {
+            $speaking = $section['kind'] === 'speaking';
+            foreach ($speaking ? ['recording'] : ['recording', 'image'] as $area) {
                 $files = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', $area, $attemptid, 'id', false);
                 foreach ($files as $file) { $media[] = $file; }
             }
+            if ($speaking && count($media) !== 1) { throw new provider_error('media'); }
             $activity = $DB->get_record('aienglishlesson', ['id' => $attempt->lessonid], '*', MUST_EXIST);
             $rubric = self::rubrics($version)[$section['kind']] ?? '';
             $rubric .= "\nGrade band: " . $activity->gradeband . '; English level: ' . $activity->proficiency .
                 '. Judge language and task completion at this learner level.';
-            $nonattempt = self::is_nonattempt($attempt->response, (bool)$media);
+            if ($speaking) {
+                $rubric .= "\nMandatory: Score only the voice recording. Disregard any rubric wording about typed notes or images.";
+            }
+            $nonattempt = !$speaking && self::is_nonattempt($attempt->response, (bool)$media);
             $result = $nonattempt ? ['score' => 0, 'confidence' => 100,
                 'feedback' => get_string('nonattemptfeedback', 'aienglishlesson')] :
-                ($provider ?? new gemini())->assess($section, $attempt->response, $rubric, $media);
+                ($provider ?? new gemini())->assess($section, $speaking ? '' : $attempt->response, $rubric, $media);
             if ($DB->record_exists('aiel_responses', ['id' => $attemptid])) {
                 $DB->update_record('aiel_responses', (object)['id' => $attemptid, 'aistatus' => 'succeeded',
                     'aiscore' => $result['score'], 'aifeedback' => $result['feedback'],
@@ -144,6 +149,13 @@ class assessment {
             $content = lesson::validate($version->content);
             if (!in_array($content['sections'][$attempt->sectionno]['kind'], self::SKILLS, true)) {
                 throw new \moodle_exception('invalidrequest');
+            }
+            if ($content['sections'][$attempt->sectionno]['kind'] === 'speaking') {
+                $cm = get_coursemodule_from_instance('aienglishlesson', $attempt->lessonid, 0, false, MUST_EXIST);
+                $context = \context_module::instance($cm->id);
+                $recordings = get_file_storage()->get_area_files($context->id,
+                    'mod_aienglishlesson', 'recording', $attempt->id, 'id', false);
+                if (!$recordings) { throw new \moodle_exception('recordingrequired', 'aienglishlesson'); }
             }
             $tx = $DB->start_delegated_transaction();
             $DB->update_record('aiel_responses', (object)['id' => $attempt->id,
