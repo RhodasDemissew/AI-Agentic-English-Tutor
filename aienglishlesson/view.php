@@ -12,6 +12,7 @@ $manage = has_capability('mod/aienglishlesson:manage', $context);
 $PAGE->set_url('/mod/aienglishlesson/view.php', ['id' => $id]);
 $PAGE->set_title(format_string($activity->name)); $PAGE->set_heading($course->fullname);
 $PAGE->requires->js_call_amd('mod_aienglishlesson/recorder', 'init');
+$PAGE->requires->js_call_amd('mod_aienglishlesson/learner', 'init');
 $versionid = optional_param('version', 0, PARAM_INT);
 $conditions = ['lessonid' => $activity->id];
 if (!$manage) { $conditions['status'] = 'published'; }
@@ -127,6 +128,10 @@ else {
     if (!$manage) { $content = \mod_aienglishlesson\local\lesson::student_data($content); }
     $section = max(0, min(count($content['sections']) - 1, optional_param('section', 0, PARAM_INT)));
     $data = $content['sections'][$section];
+    if (in_array($data['kind'], ['listening', 'speaking'], true) && !empty($data['audioscript']) &&
+            str_contains($data['body'], $data['audioscript'])) {
+        $data['body'] = trim(str_replace($data['audioscript'], '', $data['body']));
+    }
     $data['lessontitle'] = $content['title']; $data['focus'] = $content['focus'];
     $data['speaking'] = $data['kind'] === 'speaking';
     $data['assessed'] = in_array($data['kind'], \mod_aienglishlesson\local\assessment::SKILLS, true);
@@ -143,6 +148,7 @@ else {
             $response->aistatus = 'failed';
         }
         $data['response'] = $response->response;
+        $data['attemptid'] = $response->id;
         $data['submitted'] = true;
         if ($response->aistatus === 'succeeded') {
             $data['aiscore'] = get_string('provisionalscore', 'aienglishlesson', $response->aiscore);
@@ -180,8 +186,18 @@ else {
     }
     $data['canuploadaudio'] = $manage && $version->status === 'draft' && !empty($data['audioscript']);
     $data['section'] = $section; $data['sesskey'] = sesskey();
+    $data['practicekey'] = 'aiel-practice-' . $USER->id . '-' . $id . '-' . $version->id . '-' . $section;
     $data['actionurl'] = (new moodle_url('/mod/aienglishlesson/action.php'))->out(false);
     $data['cansave'] = $version->status === 'published' && !isguestuser() && is_enrolled($context, $USER, '', true);
+    if (!empty($SESSION->aiel_formerror)) {
+        $formerror = $SESSION->aiel_formerror;
+        unset($SESSION->aiel_formerror);
+        if ($formerror['version'] == $version->id && $formerror['section'] == $section && $data['assessed']) {
+            $data['response'] = $formerror['response'];
+            $data[$formerror['code'] === 'recordingerror' ? 'recordingerror' : 'answererror'] =
+                get_string($formerror['code'], 'aienglishlesson');
+        }
+    }
     $done = $DB->get_records('aiel_progress', ['versionid' => $version->id, 'userid' => $USER->id]);
     $completed = array_column($done, 'sectionno');
     $data['progress'] = get_string('progresscount', 'aienglishlesson', (object)['done' => count($done), 'total' => count($content['sections'])]);
