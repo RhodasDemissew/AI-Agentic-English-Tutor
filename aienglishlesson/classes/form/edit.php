@@ -14,11 +14,13 @@ class edit extends \moodleform {
             ['reading' => 'Reading', 'listening' => 'Listening', 'speaking' => 'Speaking', 'writing' => 'Writing']);
         $f->setDefault('focus', $this->_customdata['content']['focus']);
         foreach ($this->_customdata['content']['sections'] as $i => $section) {
+            $assessed = in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true);
             $f->addElement('header', 'section' . $i, $section['title']);
             $f->addElement('select', 'origin_' . $i, get_string('origin', 'aienglishlesson'),
                 ['source' => 'Source', 'generated' => 'Generated', 'mixed' => 'Mixed']);
             $f->setDefault('origin_' . $i, $section['origin']);
             foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
+                if (!$assessed && in_array($key, ['practice', 'answer', 'feedback', 'hint'], true)) { continue; }
                 $f->addElement('textarea', $key . '_' . $i, get_string($key, 'aienglishlesson'), ['rows' => $key === 'body' ? 6 : 3, 'cols' => 80]);
                 $f->setType($key . '_' . $i, PARAM_TEXT);
                 $f->setDefault($key . '_' . $i, $section[$key] ?? '');
