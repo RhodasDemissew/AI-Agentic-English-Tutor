@@ -4,6 +4,7 @@ defined('MOODLE_INTERNAL') || die();
 class responses {
     /** Exact checks are opt-in: a teacher prefixes an answer with [exact]. */
     public static function check_answer(array $section, string $response): ?bool {
+        if (($section['kind'] ?? '') === 'speaking') { return null; }
         $answer = $section['answer'] ?? '';
         if (!is_string($answer) || !str_starts_with($answer, '[exact] ')) { return null; }
         $expected = trim(substr($answer, 8));
@@ -21,9 +22,12 @@ class responses {
                 empty($data['sections'][$section]['practice']) || strlen($response) > 12000) {
             throw new \moodle_exception('invalidrequest');
         }
+        $speaking = $data['sections'][$section]['kind'] === 'speaking';
         $hasfile = $upload && ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($speaking && !$hasfile) { throw new \moodle_exception('recordingrequired', 'aienglishlesson'); }
         if ($hasfile && ($data['sections'][$section]['kind'] !== 'speaking' || $upload['error'] !== UPLOAD_ERR_OK ||
-            !is_uploaded_file($upload['tmp_name']) || $upload['size'] > 8 * 1024 * 1024)) { throw new \moodle_exception('recordingerror', 'aienglishlesson'); }
+            !is_uploaded_file($upload['tmp_name']) || $upload['size'] < 1 ||
+            $upload['size'] > 8 * 1024 * 1024)) { throw new \moodle_exception('recordingerror', 'aienglishlesson'); }
         $mime = '';
         $extension = '';
         if ($hasfile) {
@@ -35,6 +39,7 @@ class responses {
             $extension = $types[$mime];
         }
         $hasimage = $image && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($speaking && $hasimage) { throw new \moodle_exception('speakingimageerror', 'aienglishlesson'); }
         $imagemime = '';
         $imageextension = '';
         if ($hasimage) {
