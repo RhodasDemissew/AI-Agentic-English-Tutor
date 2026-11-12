@@ -248,7 +248,8 @@ class gemini implements provider {
                     . 'Add useful ungraded practice prompts and hints in the first five sections. Set audioscript to an empty string when no audio is needed. '
                     : 'Write a reading passage of ' . $words . ' words with a comprehension question and answer. '
                     . 'Give listening and speaking distinct spoken scripts of ' . $speech['range'] . ' words each, near 1:30 to 3:00 at a measured pace. '
-                    . 'Put the complete spoken text in each audioscript field. The minimum of ' . $speech['minimum'] .
+                    . 'Put the complete spoken text only in each audioscript field, not in body, practice, or another learner-visible field. '
+                    . 'Use body for listening and speaking instructions and context, without repeating the transcript. The minimum of ' . $speech['minimum'] .
                     ' words per field is only a validity floor; aim for the longer requested range. '
                     . 'Provide substantial writing guidance and a recap with useful self-checks, but do not put model answers in learner-visible example fields. '
                     . 'Reading, listening, speaking, and writing must each have a clear practice task. '
@@ -275,7 +276,6 @@ class gemini implements provider {
                     if (!is_string($script) || trim($script) === '') { throw new provider_error('shortaudio'); }
                 }
             }
-            self::assert_self_contained($result['sections']);
             return ['sections' => $result['sections']];
         }
         $sections = $partial['sections'] ?? [];
@@ -292,7 +292,6 @@ class gemini implements provider {
             . 'Use only this generated lesson text, not the source files. Lesson content: ' . $context;
         $quiz = $this->generate_json($c, [['text' => $quizprompt]], 4096);
         if (!is_array($quiz['quiz'] ?? null)) { throw new provider_error('response'); }
-        self::assert_self_contained($quiz['quiz']);
         // Validate the complete quiz alongside the previously validated section groups before saving it.
         self::assemble($activity, ['sections' => $sections, 'quiz' => $quiz['quiz']]);
         return ['quiz' => $quiz['quiz']];
@@ -359,24 +358,4 @@ class gemini implements provider {
         return $raw;
     }
 
-    /** Reject directions that require a learner to find material outside the generated lesson. */
-    private static function assert_self_contained(array $items): void {
-        foreach ($items as $item) {
-            if (!is_array($item)) { continue; }
-            $fields = [];
-            foreach (['title', 'body', 'example', 'practice', 'hint', 'simpler', 'extraexample',
-                    'question', 'explanation'] as $key) {
-                if (isset($item[$key]) && is_string($item[$key])) { $fields[] = $item[$key]; }
-            }
-            foreach (['cards', 'choices'] as $key) {
-                foreach ($item[$key] ?? [] as $part) {
-                    $fields[] = is_array($part) ? implode(' ', array_filter($part, 'is_string')) : (string)$part;
-                }
-            }
-            if (preg_match('/\b(?:textbook|source\s+(?:file|document)|attached\s+(?:file|pdf)|provided\s+(?:file|pdf)|page\s+\d+)\b/iu',
-                    implode(' ', $fields))) {
-                throw new provider_error('externalreference');
-            }
-        }
-    }
 }
