@@ -73,17 +73,30 @@ foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $whe
     if ($r->aistatus === 'running' && $r->timemodified < time() - 180) { $r->aistatus = 'failed'; }
     $version = $currentversion;
     $lesson = \mod_aienglishlesson\local\lesson::validate($version->content);
+    $speaking = $lesson['sections'][$r->sectionno]['kind'] === 'speaking';
+    $recordings = get_file_storage()->get_area_files($context->id,
+        'mod_aienglishlesson', 'recording', $r->id, 'id', false);
     echo html_writer::start_tag('section', ['class' => 'aiel-practice', 'id' => 'response-' . $r->id]);
     echo html_writer::tag('h3', s(fullname($user) . ' — ' . $lesson['sections'][$r->sectionno]['title']));
     echo html_writer::div(s(get_string('versionlabel', 'aienglishlesson', (object)['id' => $version->id, 'status' => $version->status]) . ' · ' . userdate($r->timemodified)));
-    echo html_writer::div(s($r->response), 'aiel-text');
+    if ($speaking) {
+        if (trim($r->response) !== '') {
+            echo html_writer::tag('h4', get_string('speakingnotes', 'aienglishlesson'));
+            echo html_writer::div(s($r->response), 'aiel-text');
+        }
+        if (!$recordings) {
+            echo $OUTPUT->notification(get_string('speakingrecordingmissing', 'aienglishlesson'), 'warning');
+        }
+    } else {
+        echo html_writer::div(s($r->response), 'aiel-text');
+    }
     $images = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'image', $r->id, 'id', false);
     foreach ($images as $file) {
         echo html_writer::empty_tag('img', ['src' => moodle_url::make_pluginfile_url($context->id,
             'mod_aienglishlesson', 'image', $r->id, '/', $file->get_filename())->out(false),
             'alt' => get_string('answerimage', 'aienglishlesson'), 'style' => 'max-width:100%']);
     }
-    foreach (get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'recording', $r->id, 'id', false) as $file) {
+    foreach ($recordings as $file) {
         echo html_writer::tag('audio', get_string('recording', 'aienglishlesson'), ['controls' => 'controls', 'preload' => 'none',
             'src' => moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'recording', $r->id, '/', $file->get_filename())->out(false)]);
     }
@@ -100,6 +113,7 @@ foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $whe
     $latest = $DB->get_records('aiel_responses', ['versionid' => $r->versionid,
         'userid' => $r->userid, 'sectionno' => $r->sectionno], 'id DESC', '*', 0, 1);
     if ($latest && (int)reset($latest)->id === (int)$r->id && $version->status === 'published' &&
+            (!$speaking || $recordings) &&
             in_array($lesson['sections'][$r->sectionno]['kind'], \mod_aienglishlesson\local\assessment::SKILLS, true)) {
         echo html_writer::start_tag('form', ['method' => 'post', 'action' => $actionurl->out(false)]);
         foreach (['sesskey' => sesskey(), 'attempt' => $r->id] as $name => $value) {
