@@ -16,18 +16,28 @@
         <button type="submit" class="btn btn-secondary">{{#str}}savechanges{{/str}}</button>
       </form>
     </details>{{/canuploadaudio}}
-    {{#audiourl}}<section><h3>{{#str}}listen, aienglishlesson{{/str}}</h3><audio controls preload="none" src="{{audiourl}}">{{#str}}listen, aienglishlesson{{/str}}</audio><p>{{#str}}localvoice, aienglishlesson{{/str}}</p><details><summary>{{#str}}transcript, aienglishlesson{{/str}}</summary><div class="aiel-text">{{audioscript}}</div></details></section>{{/audiourl}}
+    {{#audiourl}}<section><h3>{{#str}}listen, aienglishlesson{{/str}}</h3><audio controls preload="none" src="{{audiourl}}">{{#str}}listen, aienglishlesson{{/str}}</audio><p>{{#str}}localvoice, aienglishlesson{{/str}}</p><details class="aiel-transcript"><summary>{{#str}}transcript, aienglishlesson{{/str}}</summary><div class="aiel-text">{{audioscript}}</div></details></section>{{/audiourl}}
     <div class="aiel-text">{{body}}</div>
     <div class="aiel-cards">{{#cards}}<section class="aiel-card"><h3>{{term}}</h3><details><summary>{{#str}}showmeaning, aienglishlesson{{/str}}</summary><p>{{meaning}}</p><p>{{example}}</p></details></section>{{/cards}}</div>
     {{#showexample}}<section class="aiel-example"><h3>{{#str}}example, aienglishlesson{{/str}}</h3><div class="aiel-text">{{showexample}}</div></section>{{/showexample}}
     {{#simpler}}<details><summary>{{#str}}simpler, aienglishlesson{{/str}}</summary><div class="aiel-text">{{simpler}}</div></details>{{/simpler}}
     {{#extraexample}}<details><summary>{{#str}}extraexample, aienglishlesson{{/str}}</summary><div class="aiel-text">{{extraexample}}</div></details>{{/extraexample}}
-    {{#practice}}<section class="aiel-practice"><h3>{{#ungraded}}{{#str}}ungradedpractice, aienglishlesson{{/str}}{{/ungraded}}{{#assessed}}{{#str}}assessedtask, aienglishlesson{{/str}}{{/assessed}}</h3><div class="aiel-text">{{practice}}</div>
+    {{#practice}}<section class="aiel-practice" id="aiel-practice" data-attempt-id="{{attemptid}}"><h3>{{#ungraded}}{{#str}}ungradedpractice, aienglishlesson{{/str}}{{/ungraded}}{{#assessed}}{{#str}}assessedtask, aienglishlesson{{/str}}{{/assessed}}</h3><div class="aiel-text">{{practice}}</div>
       {{#hint}}<details><summary>{{#str}}hint, aienglishlesson{{/str}}</summary><div class="aiel-text">{{hint}}</div></details>{{/hint}}
-      {{#assessed}}{{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form">
+      {{#ungraded}}{{#cansave}}<div class="aiel-practice-draft" data-practice-key="{{practicekey}}" data-storage-message="{{#str}}practicestorageunavailable, aienglishlesson{{/str}}">
+        <p>{{#str}}practicelocalnotice, aienglishlesson{{/str}}</p>
+        <label for="aiel-practice-response">{{#str}}practicewriting, aienglishlesson{{/str}}</label>
+        <textarea id="aiel-practice-response" rows="5" maxlength="12000" class="form-control"></textarea>
+        <button type="button" class="btn btn-outline-secondary my-2" data-action="clear-practice">{{#str}}clearpractice, aienglishlesson{{/str}}</button>
+        <p role="status" data-region="practice-status" aria-live="polite"></p>
+      </div>{{/cansave}}{{/ungraded}}
+      {{#assessed}}{{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form"
+        data-empty-message="{{#str}}emptyresponse, aienglishlesson{{/str}}" data-saving-message="{{#str}}responsesaving, aienglishlesson{{/str}}"
+        data-connection-message="{{#str}}responseconnection, aienglishlesson{{/str}}" data-problem-message="{{#str}}responseproblem, aienglishlesson{{/str}}">
         <input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="submit"><input type="hidden" name="sesskey" value="{{sesskey}}">
         <label for="aiel-response">{{#str}}yourresponse, aienglishlesson{{/str}}</label>
         <textarea id="aiel-response" name="response" rows="6" maxlength="12000" class="form-control">{{response}}</textarea>
+        <p class="aiel-field-error" data-region="answer-error" role="alert" {{^answererror}}hidden{{/answererror}}>{{answererror}}</p>
         <label for="aiel-answerimage">{{#str}}answerimage, aienglishlesson{{/str}}</label>
         <input class="form-control" type="file" id="aiel-answerimage" name="answerimage" accept="image/jpeg,image/png,image/webp">
         {{#speaking}}<div class="aiel-recorder my-3">
@@ -35,6 +45,7 @@
           <button type="button" class="btn btn-secondary" data-action="record">{{#str}}record, aienglishlesson{{/str}}</button>
           <button type="button" class="btn btn-secondary" data-action="stop" disabled>{{#str}}stoprecording, aienglishlesson{{/str}}</button>
           <p role="status" aria-live="polite" data-region="status"></p>
+          <p class="aiel-field-error" data-region="recording-error" role="alert" {{^recordingerror}}hidden{{/recordingerror}}>{{recordingerror}}</p>
           <audio controls hidden data-region="preview"></audio>
           <a hidden data-region="download">{{#str}}downloadrecording, aienglishlesson{{/str}}</a>
           <label for="aiel-recording">{{#str}}uploadrecording, aienglishlesson{{/str}}</label>
@@ -42,6 +53,7 @@
         </div>{{/speaking}}
         <p>{{ainotice}}</p>
         <button type="submit" class="btn btn-primary my-2">{{#str}}submitresponse, aienglishlesson{{/str}}</button>
+        <p data-region="submit-status" role="status" aria-live="polite"></p>
       </form>{{/cansave}}
       {{#submitted}}<p role="status">{{#str}}responsesaved, aienglishlesson{{/str}}</p>
         {{#answercheck}}<p role="status">{{answercheck}}</p>{{/answercheck}}
