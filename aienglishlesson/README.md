@@ -1,4 +1,4 @@
-# AI English Lessons 0.6.4
+# AI English Lessons 0.6.6
 
 Moodle 4.4 activity with staged lesson generation, teacher review, four assessed skills, a ten-question quiz, cached audio and one final gradebook item.
 
@@ -29,3 +29,7 @@ Version 0.6.2 defaults new installations to Gemini 3.5 Flash Lite and gives it t
 Version 0.6.3 preserves a draft when generated listening or speaking scripts are shorter than the target, and warns the teacher to review and expand them before publishing. Missing scripts still fail generation. Local eSpeak NG reads new audio at a measured 120 words per minute. Cloud speech remains a separate preparation step after the draft is saved.
 
 Version 0.6.4 labels the first five sections and recap as ungraded practice, reserves submissions for the four assessed skills, and sends learners from the recap completion button to the quiz. New lesson prompts require self-contained content and keep worked examples in their teaching section. The quiz review colors correct and incorrect choices. Teacher response review starts with a list of students in the current published version. The activity icon and lesson header use the supplied tutor branding. Existing published lesson text and grades are not rewritten.
+
+Version 0.6.5 adds a browser-only writing space for ungraded practice, keeps assessed submissions on the current section, and displays missing-answer messages beside inputs. It also keeps transcripts closed until opened and allows relevant supplementary source material in drafts.
+
+Version 0.6.6 removes ungraded practice prompts and writing spaces from learner pages and draft editing. The first five sections teach the topic, and the recap summarizes it. New drafts leave non-assessed practice fields empty. Younger grades show a built-in lesson graphic and open, colorful vocabulary cards without additional provider requests. Draft review warns teachers about assessed questions mentioning unseen visuals. Existing published lesson text, grades, and the lesson JSON format remain compatible.
