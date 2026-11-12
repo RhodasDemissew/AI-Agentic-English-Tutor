@@ -1,4 +1,4 @@
-# AI English Lessons 0.6.6
+# AI English Lessons 0.6.7
 
 Moodle 4.4 activity with staged lesson generation, teacher review, four assessed skills, a ten-question quiz, cached audio and one final gradebook item.
 
@@ -33,3 +33,5 @@ Version 0.6.4 labels the first five sections and recap as ungraded practice, res
 Version 0.6.5 adds a browser-only writing space for ungraded practice, keeps assessed submissions on the current section, and displays missing-answer messages beside inputs. It also keeps transcripts closed until opened and allows relevant supplementary source material in drafts.
 
 Version 0.6.6 removes ungraded practice prompts and writing spaces from learner pages and draft editing. The first five sections teach the topic, and the recap summarizes it. New drafts leave non-assessed practice fields empty. Younger grades show a built-in lesson graphic and open, colorful vocabulary cards without additional provider requests. Draft review warns teachers about assessed questions mentioning unseen visuals. Existing published lesson text, grades, and the lesson JSON format remain compatible.
+
+Version 0.6.7 requires a voice recording for new Speaking submissions. Learners may save optional notes for teacher review; notes and images are excluded from Speaking AI assessment. Speaking images cannot be submitted, text-based exact-answer checks do not run for Speaking, and a teacher can approve a new Speaking score only when the attempt has a recording. Previously released grades remain unchanged. Other skills and the final grade calculation are unchanged.
