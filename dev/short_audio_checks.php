@@ -60,17 +60,15 @@ namespace {
         if ($e->getMessage() !== 'shortaudio') { throw new \RuntimeException('Wrong missing-script diagnostic'); }
     }
     $mock->sections[1]['audioscript'] = $short;
-    $mock->sections[0]['practice'] = 'Find the answer in the textbook glossary.';
-    try {
-        $mock->generate_stage($activity, [], 1, $partial);
-        throw new \RuntimeException('External textbook reference accepted');
-    } catch (\mod_aienglishlesson\local\provider_error $e) {
-        if ($e->getMessage() !== 'externalreference') { throw new \RuntimeException('Wrong external-reference diagnostic'); }
+    $mock->sections[0]['practice'] = 'Use the idea from page 4 to explain this example.';
+    if (count($mock->generate_stage($activity, [], 1, $partial)['sections']) !== 5) {
+        throw new \RuntimeException('Relevant source reference rejected');
     }
     $mock->sections[0]['practice'] = 'Answer this.';
     $mock->quiz = array_map(static function($i) { return ['question' => 'Question ' . $i,
         'choices' => ['A', 'B', 'C', 'D'], 'correct' => $i % 4,
         'explanation' => 'The lesson explains this.']; }, range(1, 10));
+    $mock->quiz[0]['explanation'] = 'A related example appears on page 4.';
     $quiz = $mock->generate_stage($activity, [], 2, ['sections' => array_merge($partial['sections'], $mock->sections)]);
     $parts = $mock->requestbody['contents'][0]['parts'];
     if (count($quiz['quiz']) !== 10 || count($parts) !== 1 ||
