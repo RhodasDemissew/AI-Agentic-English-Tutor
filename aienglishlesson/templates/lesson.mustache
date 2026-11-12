@@ -3,8 +3,12 @@
     <p>{{progress}}</p><p>{{masterynotice}}</p>
     <ol>{{#navigation}}<li><a href="{{url}}" {{#current}}aria-current="step"{{/current}}>{{title}}</a> {{#done}}<span aria-label="{{#str}}completed, aienglishlesson{{/str}}">✓</span>{{/done}}</li>{{/navigation}}{{#quizurl}}<li><a href="{{quizurl}}">{{#str}}quiz, aienglishlesson{{/str}}</a></li>{{/quizurl}}</ol>
   </nav>
-  <article class="aiel-content">
+  <article class="aiel-content {{#young}}aiel-content--young{{/young}}">
     <p class="aiel-meta">{{#str}}focus, aienglishlesson{{/str}}: {{focus}} · {{#str}}origin, aienglishlesson{{/str}}: {{origin}}</p>
+    {{#young}}<div class="aiel-young-visual" aria-hidden="true">
+      <svg class="aiel-young-book" viewBox="0 0 120 80" focusable="false"><path d="M60 20C44 10 26 10 10 17v48c17-7 34-6 50 4V20Zm0 0c16-10 34-10 50-3v48c-17-7-34-6-50 4V20Z" fill="#fff" stroke="#164a88" stroke-width="4" stroke-linejoin="round"/><path d="M60 21v47M20 29c11-3 22-2 31 2M20 40c11-3 22-2 31 2M69 31c10-4 21-5 31-2M69 43c10-4 21-5 31-2" fill="none" stroke="#4a91d8" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="aiel-young-spark aiel-young-spark--one"></span><span class="aiel-young-spark aiel-young-spark--two"></span>
+    </div>{{/young}}
     <h2>{{title}}</h2>
     {{#canuploadaudio}}<details class="my-3"><summary>{{#str}}uploadlessonaudio, aienglishlesson{{/str}}</summary>
       <p>{{#str}}uploadlessonaudio_desc, aienglishlesson{{/str}}</p>
@@ -18,20 +22,13 @@
     </details>{{/canuploadaudio}}
     {{#audiourl}}<section><h3>{{#str}}listen, aienglishlesson{{/str}}</h3><audio controls preload="none" src="{{audiourl}}">{{#str}}listen, aienglishlesson{{/str}}</audio><p>{{#str}}localvoice, aienglishlesson{{/str}}</p><details class="aiel-transcript"><summary>{{#str}}transcript, aienglishlesson{{/str}}</summary><div class="aiel-text">{{audioscript}}</div></details></section>{{/audiourl}}
     <div class="aiel-text">{{body}}</div>
-    <div class="aiel-cards">{{#cards}}<section class="aiel-card"><h3>{{term}}</h3><details><summary>{{#str}}showmeaning, aienglishlesson{{/str}}</summary><p>{{meaning}}</p><p>{{example}}</p></details></section>{{/cards}}</div>
+    <div class="aiel-cards">{{#cards}}<section class="aiel-card"><h3>{{term}}</h3>{{#young}}<p class="aiel-card-meaning">{{meaning}}</p><p class="aiel-card-example">{{example}}</p>{{/young}}{{^young}}<details><summary>{{#str}}showmeaning, aienglishlesson{{/str}}</summary><p>{{meaning}}</p><p>{{example}}</p></details>{{/young}}</section>{{/cards}}</div>
     {{#showexample}}<section class="aiel-example"><h3>{{#str}}example, aienglishlesson{{/str}}</h3><div class="aiel-text">{{showexample}}</div></section>{{/showexample}}
     {{#simpler}}<details><summary>{{#str}}simpler, aienglishlesson{{/str}}</summary><div class="aiel-text">{{simpler}}</div></details>{{/simpler}}
     {{#extraexample}}<details><summary>{{#str}}extraexample, aienglishlesson{{/str}}</summary><div class="aiel-text">{{extraexample}}</div></details>{{/extraexample}}
-    {{#practice}}<section class="aiel-practice" id="aiel-practice" data-attempt-id="{{attemptid}}"><h3>{{#ungraded}}{{#str}}ungradedpractice, aienglishlesson{{/str}}{{/ungraded}}{{#assessed}}{{#str}}assessedtask, aienglishlesson{{/str}}{{/assessed}}</h3><div class="aiel-text">{{practice}}</div>
+    {{#assessed}}{{#practice}}<section class="aiel-practice" id="aiel-practice" data-attempt-id="{{attemptid}}"><h3>{{#str}}assessedtask, aienglishlesson{{/str}}</h3><div class="aiel-text">{{practice}}</div>
       {{#hint}}<details><summary>{{#str}}hint, aienglishlesson{{/str}}</summary><div class="aiel-text">{{hint}}</div></details>{{/hint}}
-      {{#ungraded}}{{#cansave}}<div class="aiel-practice-draft" data-practice-key="{{practicekey}}" data-storage-message="{{#str}}practicestorageunavailable, aienglishlesson{{/str}}">
-        <p>{{#str}}practicelocalnotice, aienglishlesson{{/str}}</p>
-        <label for="aiel-practice-response">{{#str}}practicewriting, aienglishlesson{{/str}}</label>
-        <textarea id="aiel-practice-response" rows="5" maxlength="12000" class="form-control"></textarea>
-        <button type="button" class="btn btn-outline-secondary my-2" data-action="clear-practice">{{#str}}clearpractice, aienglishlesson{{/str}}</button>
-        <p role="status" data-region="practice-status" aria-live="polite"></p>
-      </div>{{/cansave}}{{/ungraded}}
-      {{#assessed}}{{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form"
+      {{#cansave}}<form method="post" enctype="multipart/form-data" action="{{actionurl}}" class="aiel-response-form"
         data-empty-message="{{#str}}emptyresponse, aienglishlesson{{/str}}" data-saving-message="{{#str}}responsesaving, aienglishlesson{{/str}}"
         data-connection-message="{{#str}}responseconnection, aienglishlesson{{/str}}" data-problem-message="{{#str}}responseproblem, aienglishlesson{{/str}}">
         <input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="submit"><input type="hidden" name="sesskey" value="{{sesskey}}">
@@ -65,9 +62,8 @@
         {{#teacherfeedback}}<p>{{teacherfeedback}}</p>{{/teacherfeedback}}
         <form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="clearresponse"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-outline-secondary" type="submit">{{deletelabel}}</button></form>
       {{/submitted}}
-      {{/assessed}}
-    </section>{{/practice}}
-    {{#teacher}}{{#answer}}<details><summary>{{#str}}answer, aienglishlesson{{/str}}</summary><div class="aiel-text">{{answer}}</div></details>{{/answer}}{{/teacher}}
+    </section>{{/practice}}{{/assessed}}
+    {{#assessed}}{{#teacher}}{{#answer}}<details><summary>{{#str}}answer, aienglishlesson{{/str}}</summary><div class="aiel-text">{{answer}}</div></details>{{/answer}}{{/teacher}}{{/assessed}}
     {{#cansave}}<form method="post" action="{{actionurl}}"><input type="hidden" name="id" value="{{id}}"><input type="hidden" name="version" value="{{version}}"><input type="hidden" name="section" value="{{section}}"><input type="hidden" name="action" value="progress"><input type="hidden" name="sesskey" value="{{sesskey}}"><button class="btn btn-primary my-3" type="submit">{{#str}}markcomplete, aienglishlesson{{/str}}</button></form>{{/cansave}}
     <div class="aiel-pagination">{{#previous}}<a class="btn btn-outline-secondary" href="{{previous}}">{{#str}}previous, aienglishlesson{{/str}}</a>{{/previous}}{{#next}}<a class="btn btn-outline-secondary" href="{{next}}">{{#str}}next, aienglishlesson{{/str}}</a>{{/next}}</div>
   </article>
