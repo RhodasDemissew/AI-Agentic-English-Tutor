@@ -22,71 +22,151 @@ class lesson {
             'quiz' => ['type' => 'array', 'items' => $question]],
             'required' => ['title', 'focus', 'readable', 'sections']];
     }
+    /** Reason code of the last failed validate() call, for diagnostics and automatic retries. */
+    public static string $failure = '';
+
+    /** Byte limits per section field (the database and pages rely on these). */
+    public const SECTION_LIMITS = ['title' => 255, 'body' => 8000, 'example' => 4000, 'practice' => 4000, 'answer' => 4000,
+        'feedback' => 4000, 'hint' => 4000, 'simpler' => 4000, 'extraexample' => 4000, 'audioscript' => 4000];
+
+    private static function text_ok($value, int $max): bool {
+        return is_string($value) && strlen($value) <= $max && strpos($value, "\0") === false;
+    }
+
+    /** The first rule one section breaks, as a reason code, or null when the section is valid. */
+    public static function section_problem($section): ?string {
+        if (!is_array($section) || array_diff(array_keys($section), ['kind', 'title', 'body', 'example', 'practice', 'answer',
+                'origin', 'cards', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript']) ||
+                !in_array($section['kind'] ?? '', self::KINDS, true) ||
+                !in_array($section['origin'] ?? '', ['source', 'generated', 'mixed'], true)) { return 'lessonshape'; }
+        foreach (self::SECTION_LIMITS as $key => $max) {
+            $optional = in_array($key, ['feedback', 'hint', 'simpler', 'extraexample', 'audioscript'], true);
+            if (($optional && !isset($section[$key])) ) { continue; }
+            if (!self::text_ok($section[$key] ?? null, $max)) { return 'lessontext'; }
+        }
+        if (trim($section['title']) === '' || trim($section['body']) === '') { return 'lessonempty'; }
+        if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true) &&
+                trim($section['practice']) === '') { return 'lessontask'; }
+        if (in_array($section['kind'], ['reading', 'listening', 'writing'], true) &&
+                trim($section['answer']) === '') { return 'lessonanswer'; }
+        if ($section['kind'] === 'listening' && trim($section['audioscript'] ?? '') === '') { return 'shortaudio'; }
+        if (!is_array($section['cards'] ?? null) || !array_is_list($section['cards']) || count($section['cards']) > 20) { return 'lessoncards'; }
+        foreach ($section['cards'] as $card) {
+            if (!is_array($card) || array_diff(array_keys($card), ['term', 'meaning', 'example'])) { return 'lessoncards'; }
+            foreach (['term', 'meaning', 'example'] as $key) {
+                if (!self::text_ok($card[$key] ?? null, 1000) || trim($card[$key]) === '') { return 'lessoncards'; }
+            }
+        }
+        if ($section['kind'] === 'vocabulary' && !$section['cards']) { return 'lessoncards'; }
+        return null;
+    }
+
+    /** The first rule the quiz breaks, as a reason code, or null when it is valid. */
+    public static function quiz_problem($quiz): ?string {
+        if (!is_array($quiz) || !array_is_list($quiz) || count($quiz) !== 10) { return 'quizcount'; }
+        foreach ($quiz as $question) {
+            if (!is_array($question) || array_diff(array_keys($question), ['question', 'choices', 'correct', 'explanation']) ||
+                    !is_int($question['correct'] ?? null) || $question['correct'] < 0 || $question['correct'] > 3 ||
+                    !is_array($question['choices'] ?? null) || !array_is_list($question['choices']) ||
+                    count($question['choices']) !== 4) { return 'quizchoices'; }
+            if (!self::text_ok($question['question'] ?? null, 1000) || !self::text_ok($question['explanation'] ?? null, 1500) ||
+                    trim($question['question']) === '' || trim($question['explanation']) === '') { return 'quiztext'; }
+            foreach ($question['choices'] as $choice) {
+                if (!self::text_ok($choice, 500) || trim($choice) === '') { return 'quizchoices'; }
+            }
+            if (count(array_unique(array_map(static function($choice) {
+                return mb_strtolower(trim($choice));
+            }, $question['choices']))) !== 4) { return 'quizchoices'; }
+        }
+        return null;
+    }
+
+    /** Shorten text to a byte limit without breaking a character, preferring a sentence or word end. */
+    public static function fit(string $text, int $max): string {
+        $text = str_replace("\0", '', $text);
+        if (strlen($text) <= $max) { return $text; }
+        $cut = mb_strcut($text, 0, $max - 3, 'UTF-8');
+        $sentence = max(strrpos($cut, '. ') ?: 0, strrpos($cut, ".\n") ?: 0);
+        if ($sentence > $max * 0.8) { return substr($cut, 0, $sentence + 1); }
+        $space = strrpos($cut, ' ');
+        return rtrim($space > $max * 0.8 ? substr($cut, 0, $space) : $cut) . '…';
+    }
+
+    /** Fix small, safe problems in one generated section: over-long text and incomplete vocabulary cards. */
+    public static function repair_section(array $section): array {
+        foreach (self::SECTION_LIMITS as $key => $max) {
+            if (isset($section[$key]) && is_string($section[$key])) { $section[$key] = self::fit($section[$key], $max); }
+        }
+        if (isset($section['cards']) && is_array($section['cards'])) {
+            $cards = [];
+            foreach ($section['cards'] as $card) {
+                if (!is_array($card)) { continue; }
+                $clean = [];
+                foreach (['term', 'meaning', 'example'] as $key) {
+                    $clean[$key] = is_string($card[$key] ?? null) ? self::fit(trim($card[$key]), 1000) : '';
+                }
+                if ($clean['term'] !== '' && $clean['meaning'] !== '') {
+                    if ($clean['example'] === '') { $clean['example'] = $clean['term']; }
+                    $cards[] = $clean;
+                }
+            }
+            $section['cards'] = array_slice($cards, 0, 20);
+        }
+        return $section;
+    }
+
+    /**
+     * Keep every usable quiz question, fixing what can be fixed safely: long text, missing explanations,
+     * duplicate choices (question dropped) and extra questions (first ten kept). May return fewer than ten.
+     */
+    public static function repair_quiz($quiz): array {
+        $out = [];
+        foreach (is_array($quiz) ? $quiz : [] as $question) {
+            if (!is_array($question) || !is_array($question['choices'] ?? null) || !is_int($question['correct'] ?? null)) { continue; }
+            $text = is_string($question['question'] ?? null) ? self::fit(trim($question['question']), 1000) : '';
+            $choices = array_values(array_map(static function($choice) {
+                return is_string($choice) ? self::fit(trim($choice), 500) : '';
+            }, $question['choices']));
+            $correct = $question['correct'];
+            if ($text === '' || count($choices) !== 4 || $correct < 0 || $correct > 3 || in_array('', $choices, true) ||
+                    count(array_unique(array_map('mb_strtolower', $choices))) !== 4) { continue; }
+            $explanation = is_string($question['explanation'] ?? null) ? self::fit(trim($question['explanation']), 1500) : '';
+            if ($explanation === '') { $explanation = $choices[$correct]; }
+            $out[] = ['question' => $text, 'choices' => $choices, 'correct' => $correct, 'explanation' => $explanation];
+            if (count($out) === 10) { break; }
+        }
+        return $out;
+    }
+
     public static function validate(string $json): array {
-        if (strlen($json) > 150000) { throw new \moodle_exception('invalidlesson', 'aienglishlesson'); }
-        try { $data = json_decode($json, true, 32, JSON_THROW_ON_ERROR); }
-        catch (\Throwable $e) { throw new \moodle_exception('invalidlesson', 'aienglishlesson'); }
-        $fail = function() { throw new \moodle_exception('invalidlesson', 'aienglishlesson'); };
-        $checktext = function($value, $max) use ($fail) {
-            if (!is_string($value) || strlen($value) > $max || strpos($value, "\0") !== false) { $fail(); }
+        self::$failure = '';
+        $fail = function(string $reason = 'invalidlesson') {
+            self::$failure = $reason;
+            throw new \moodle_exception('invalidlesson', 'aienglishlesson');
         };
-        if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections', 'quiz', 'activities'])) { $fail(); }
-        $checktext($data['title'] ?? null, 255);
+        if (strlen($json) > 150000) { $fail('lessonsize'); }
+        try { $data = json_decode($json, true, 32, JSON_THROW_ON_ERROR); }
+        catch (\Throwable $e) { $fail('lessonshape'); }
+        if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections', 'quiz', 'activities'])) { $fail('lessonshape'); }
+        if (!self::text_ok($data['title'] ?? null, 255)) { $fail('lessontext'); }
         if (trim($data['title']) === '' || !in_array($data['focus'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) ||
-                !is_bool($data['readable'] ?? null)) { $fail(); }
+                !is_bool($data['readable'] ?? null)) { $fail('lessonshape'); }
         if (!$data['readable']) { throw new \moodle_exception('unreadablepdf', 'aienglishlesson'); }
-        if (!is_array($data['sections'] ?? null) || !array_is_list($data['sections']) || count($data['sections']) < 10 || count($data['sections']) > 20) { $fail(); }
+        if (!is_array($data['sections'] ?? null) || !array_is_list($data['sections']) || count($data['sections']) < 10 || count($data['sections']) > 20) { $fail('lessonshape'); }
         $kinds = [];
         foreach ($data['sections'] as $section) {
-            if (!is_array($section) || array_diff(array_keys($section), ['kind', 'title', 'body', 'example', 'practice', 'answer', 'origin', 'cards', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'])) { $fail(); }
-            foreach (['feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
-                if (isset($section[$key])) { $checktext($section[$key], 4000); }
-            }
-            if (!in_array($section['kind'] ?? '', self::KINDS, true) ||
-                    !in_array($section['origin'] ?? '', ['source', 'generated', 'mixed'], true)) { $fail(); }
+            $problem = self::section_problem($section);
+            if ($problem !== null) { $fail($problem); }
             $kinds[] = $section['kind'];
-            foreach (['title' => 255, 'body' => 8000, 'example' => 4000, 'practice' => 4000, 'answer' => 4000] as $key => $max) {
-                $checktext($section[$key] ?? null, $max);
-            }
-            if (trim($section['title']) === '' || trim($section['body']) === '') { $fail(); }
-            if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true) &&
-                    trim($section['practice']) === '') { $fail(); }
-            if (in_array($section['kind'], ['reading', 'listening', 'writing'], true) &&
-                    trim($section['answer']) === '') { $fail(); }
-            if ($section['kind'] === 'listening' && trim($section['audioscript'] ?? '') === '') { $fail(); }
-            if (!is_array($section['cards'] ?? null) || !array_is_list($section['cards']) || count($section['cards']) > 20) { $fail(); }
-            foreach ($section['cards'] as $card) {
-                if (!is_array($card) || array_diff(array_keys($card), ['term', 'meaning', 'example'])) { $fail(); }
-                foreach (['term', 'meaning', 'example'] as $key) {
-                    $checktext($card[$key] ?? null, 1000);
-                    if (trim($card[$key]) === '') { $fail(); }
-                }
-            }
-            if ($section['kind'] === 'vocabulary' && !$section['cards']) { $fail(); }
         }
-        if (count($kinds) !== count(self::KINDS) || $kinds !== self::KINDS) { $fail(); }
+        if (count($kinds) !== count(self::KINDS) || $kinds !== self::KINDS) { $fail('lessonshape'); }
         if (array_key_exists('quiz', $data)) {
-            if (!is_array($data['quiz']) || !array_is_list($data['quiz']) || count($data['quiz']) !== 10) { $fail(); }
-            foreach ($data['quiz'] as $question) {
-                if (!is_array($question) || array_diff(array_keys($question), ['question', 'choices', 'correct', 'explanation']) ||
-                        !is_int($question['correct'] ?? null) || $question['correct'] < 0 || $question['correct'] > 3 ||
-                        !is_array($question['choices'] ?? null) || !array_is_list($question['choices']) ||
-                        count($question['choices']) !== 4) { $fail(); }
-                $checktext($question['question'] ?? null, 1000);
-                $checktext($question['explanation'] ?? null, 1500);
-                if (trim($question['question']) === '' || trim($question['explanation']) === '') { $fail(); }
-                foreach ($question['choices'] as $choice) {
-                    $checktext($choice, 500);
-                    if (trim($choice) === '') { $fail(); }
-                }
-                if (count(array_unique(array_map(static function($choice) {
-                    return mb_strtolower(trim($choice));
-                }, $question['choices']))) !== 4) { $fail(); }
-            }
+            $problem = self::quiz_problem($data['quiz']);
+            if ($problem !== null) { $fail($problem); }
         }
         if (array_key_exists('activities', $data)) {
             $clean = self::clean_activities($data['activities']);
-            if ($clean === null || count($clean) !== count($data['activities'])) { $fail(); }
+            if ($clean === null || count($clean) !== count($data['activities'])) { $fail('lessongames'); }
         }
         return $data;
     }
