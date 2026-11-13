@@ -51,7 +51,7 @@ class audio {
                 $script = $directory . '/script' . $i . '.txt';
                 $wav = $directory . '/section' . $i . '.wav';
                 if ($mode === 'gemini') {
-                    $bytes = $synthesizer ? $synthesizer($section['audioscript']) : (new gemini())->speech($section['audioscript']);
+                    $bytes = $synthesizer ? $synthesizer($section['audioscript']) : (new gemini())->set_usage_context((int)$version->lessonid)->speech($section['audioscript']);
                     file_put_contents($wav, $bytes);
                     $created[$i] = $wav;
                     // Persist each successful section so retry does not repeat a cloud request.
