@@ -357,6 +357,10 @@ class gemini implements provider {
                 if (!in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true)) {
                     foreach (['practice', 'answer', 'feedback', 'hint'] as $field) { $section[$field] = ''; }
                 }
+                // Fix small problems now; anything still invalid retries this stage instead of failing at the end.
+                $section = lesson::repair_section($section);
+                $problem = lesson::section_problem($section);
+                if ($problem !== null) { throw new provider_error($problem, true); }
             }
             unset($section);
             return ['sections' => $result['sections']];
@@ -384,11 +388,19 @@ class gemini implements provider {
             . 'Use only this generated lesson text, not the source files. Lesson content: ' . $context;
         $quiz = $this->generate_json($c, [['text' => $quizprompt]], 8192);
         if (!is_array($quiz['quiz'] ?? null)) { throw new provider_error('response'); }
+        // Keep every usable question; ask again (this stage only) when fewer than ten survive.
+        $questions = lesson::repair_quiz($quiz['quiz']);
+        if (count($questions) < 10) { throw new provider_error('quizcount', true); }
         // Practice games are optional: keep the lesson when the model returns unusable games.
         $activities = lesson::clean_activities($quiz['activities'] ?? null);
         // Validate the complete quiz alongside the previously validated section groups before saving it.
-        self::assemble($activity, ['sections' => $sections, 'quiz' => $quiz['quiz'], 'activities' => $activities]);
-        return $activities !== null ? ['quiz' => $quiz['quiz'], 'activities' => $activities] : ['quiz' => $quiz['quiz']];
+        try {
+            self::assemble($activity, ['sections' => $sections, 'quiz' => $questions, 'activities' => $activities]);
+        } catch (\moodle_exception $e) {
+            if ($e->errorcode !== 'invalidlesson') { throw $e; }
+            throw new provider_error(lesson::$failure ?: 'invalidlesson', true);
+        }
+        return $activities !== null ? ['quiz' => $questions, 'activities' => $activities] : ['quiz' => $questions];
     }
 
     /** Keep the long spoken-script stage within the configured model's output capacity. */
