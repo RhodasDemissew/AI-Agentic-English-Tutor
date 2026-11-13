@@ -16,7 +16,7 @@ class lesson {
         $question = ['type' => 'object', 'properties' => ['question' => $text,
             'choices' => ['type' => 'array', 'items' => $text], 'correct' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 3],
             'explanation' => $text], 'required' => ['question', 'choices', 'correct', 'explanation']];
-        return ['type' => 'object', 'properties' => ['title' => $text,
+        return ['type' => 'object', 'properties' => ['title' => $text, 'activities' => ['type' => 'array', 'items' => self::activity_schema()],
             'focus' => ['type' => 'string', 'enum' => ['reading', 'listening', 'speaking', 'writing']],
             'readable' => ['type' => 'boolean'], 'sections' => ['type' => 'array', 'items' => $section],
             'quiz' => ['type' => 'array', 'items' => $question]],
@@ -30,7 +30,7 @@ class lesson {
         $checktext = function($value, $max) use ($fail) {
             if (!is_string($value) || strlen($value) > $max || strpos($value, "\0") !== false) { $fail(); }
         };
-        if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections', 'quiz'])) { $fail(); }
+        if (!is_array($data) || array_diff(array_keys($data), ['title', 'focus', 'readable', 'sections', 'quiz', 'activities'])) { $fail(); }
         $checktext($data['title'] ?? null, 255);
         if (trim($data['title']) === '' || !in_array($data['focus'] ?? '', ['reading', 'listening', 'speaking', 'writing'], true) ||
                 !is_bool($data['readable'] ?? null)) { $fail(); }
@@ -84,8 +84,86 @@ class lesson {
                 }, $question['choices']))) !== 4) { $fail(); }
             }
         }
+        if (array_key_exists('activities', $data)) {
+            $clean = self::clean_activities($data['activities']);
+            if ($clean === null || count($clean) !== count($data['activities'])) { $fail(); }
+        }
         return $data;
     }
+
+    /** Practice game types generated with the quiz and scored by PHP. */
+    public const ACTIVITY_TYPES = ['order', 'match', 'gap'];
+
+    public static function activity_schema(): array {
+        $text = ['type' => 'string'];
+        return ['type' => 'object', 'properties' => [
+            'type' => ['type' => 'string', 'enum' => self::ACTIVITY_TYPES], 'prompt' => $text,
+            'items' => ['type' => 'array', 'items' => $text],
+            'pairs' => ['type' => 'array', 'items' => ['type' => 'object',
+                'properties' => ['left' => $text, 'right' => $text], 'required' => ['left', 'right']]],
+            'sentence' => $text, 'choices' => ['type' => 'array', 'items' => $text],
+            'correct' => ['type' => 'integer'],
+        ], 'required' => ['type', 'prompt', 'items', 'pairs', 'sentence', 'choices', 'correct']];
+    }
+
+    /**
+     * Normalise practice games to their type-specific fields. Invalid items are dropped.
+     * Returns null when the value is not a usable list (fewer than 3 valid games).
+     */
+    public static function clean_activities($activities): ?array {
+        if (!is_array($activities) || !array_is_list($activities) || count($activities) > 10) { return null; }
+        $str = static function($value, int $max): ?string {
+            if (!is_string($value) || strpos($value, "\0") !== false) { return null; }
+            $value = trim(preg_replace('/\s+/u', ' ', $value));
+            return $value === '' || \core_text::strlen($value) > $max ? null : $value;
+        };
+        $unique = static function(array $values): bool {
+            return count(array_unique(array_map('mb_strtolower', $values))) === count($values);
+        };
+        $out = [];
+        foreach ($activities as $item) {
+            if (!is_array($item) || !in_array($item['type'] ?? '', self::ACTIVITY_TYPES, true)) { continue; }
+            $prompt = $str($item['prompt'] ?? null, 300);
+            if ($prompt === null) { continue; }
+            if ($item['type'] === 'order') {
+                $words = [];
+                foreach ((array)($item['items'] ?? []) as $word) {
+                    $word = $str($word, 60);
+                    if ($word === null) { continue 2; }
+                    $words[] = $word;
+                }
+                if (count($words) < 3 || count($words) > 10 || !$unique($words)) { continue; }
+                $out[] = ['type' => 'order', 'prompt' => $prompt, 'items' => $words];
+            } else if ($item['type'] === 'match') {
+                $pairs = [];
+                foreach ((array)($item['pairs'] ?? []) as $pair) {
+                    $left = is_array($pair) ? $str($pair['left'] ?? null, 200) : null;
+                    $right = is_array($pair) ? $str($pair['right'] ?? null, 200) : null;
+                    if ($left === null || $right === null) { continue 2; }
+                    $pairs[] = ['left' => $left, 'right' => $right];
+                }
+                if (count($pairs) < 3 || count($pairs) > 5 || !$unique(array_column($pairs, 'left')) ||
+                        !$unique(array_column($pairs, 'right'))) { continue; }
+                $out[] = ['type' => 'match', 'prompt' => $prompt, 'pairs' => $pairs];
+            } else {
+                $sentence = $str($item['sentence'] ?? null, 400);
+                $choices = [];
+                foreach ((array)($item['choices'] ?? []) as $choice) {
+                    $choice = $str($choice, 100);
+                    if ($choice === null) { continue 2; }
+                    $choices[] = $choice;
+                }
+                $correct = $item['correct'] ?? null;
+                if ($sentence === null || substr_count($sentence, '___') !== 1 || count($choices) < 3 ||
+                        count($choices) > 4 || !$unique($choices) || !is_int($correct) || $correct < 0 ||
+                        $correct >= count($choices)) { continue; }
+                $out[] = ['type' => 'gap', 'prompt' => $prompt, 'sentence' => $sentence, 'choices' => $choices,
+                    'correct' => $correct];
+            }
+        }
+        return count($out) >= 3 ? $out : null;
+    }
+
     public static function student_data(array $data): array {
         foreach ($data['sections'] as &$section) {
             unset($section['answer'], $section['feedback']);
