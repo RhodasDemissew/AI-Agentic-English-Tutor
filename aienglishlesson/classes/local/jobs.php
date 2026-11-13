@@ -2,6 +2,10 @@
 namespace mod_aienglishlesson\local;
 defined('MOODLE_INTERNAL') || die();
 class jobs {
+    /** Tries per generation stage (the first try plus automatic retries) before the teacher sees an error. */
+    public const MAX_ATTEMPTS = 4;
+    /** Provider outcomes that mean "the AI answer was unusable": worth asking again for the same stage. */
+    public const RETRY_CONTENT = ['response', 'incomplete', 'shortaudio', 'outputlimit', 'invalidlesson'];
     public static function direct(): bool {
         return get_config('aienglishlesson', 'executionmode') !== 'background';
     }
@@ -45,7 +49,7 @@ class jobs {
             if (!$job || in_array($job->status, ['succeeded', 'failed'], true)) { return; }
             // A crashed web request can leave a running row. Each stage has its own timeout.
             if ($job->status === 'running' && $job->timemodified > time() - self::stale_after()) { return; }
-            if ($job->attempts >= 3) {
+            if ($job->attempts >= self::MAX_ATTEMPTS) {
                 $job->status = 'failed'; $job->diagnostic = 'retrylimit';
                 $job->timemodified = time();
                 $DB->update_record('aiel_jobs', $job);
@@ -108,10 +112,14 @@ class jobs {
                 $current = $DB->get_record('aiel_jobs', ['id' => $id]);
                 if (!$current || $current->status !== 'running' ||
                         (int)$current->attempts !== (int)$job->attempts) { return; }
-                $retry = $e instanceof provider_error && $e->transient && $current->attempts < 3;
-                $current->status = $retry ? 'queued' : 'failed';
                 $code = $e instanceof provider_error ? $e->getMessage() :
                     ($e instanceof \moodle_exception ? $e->errorcode : 'internal');
+                // Unusable AI output is retried for this stage only; finished stages are kept.
+                $contentproblem = in_array($code, self::RETRY_CONTENT, true) || strpos($code, 'lesson') === 0 ||
+                    strpos($code, 'quiz') === 0;
+                $retry = (($e instanceof provider_error && $e->transient) || $contentproblem) &&
+                    $current->attempts < self::MAX_ATTEMPTS;
+                $current->status = $retry ? 'queued' : 'failed';
                 $current->diagnostic = preg_match('/^[a-z0-9]{1,40}$/D', $code) ? $code : 'internal';
                 $current->timemodified = time();
                 $DB->update_record('aiel_jobs', $current);
