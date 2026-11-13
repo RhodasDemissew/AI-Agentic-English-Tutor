@@ -82,6 +82,13 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="purpose" TYPE="char" NOTNULL="false" SEQUENCE="false" LENGTH="20"/>
+        <FIELD NAME="model" TYPE="char" NOTNULL="false" SEQUENCE="false" LENGTH="100"/>
+        <FIELD NAME="status" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="inputtokens" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="outputtokens" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="userid" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="lessonid" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -107,6 +114,8 @@
         <FIELD NAME="teacherfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="approvedby" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
         <FIELD NAME="timeapproved" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="aitranscript" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="aimistake" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -126,6 +135,7 @@
         <FIELD NAME="grade" TYPE="number" LENGTH="5" NOTNULL="true" SEQUENCE="false" DECIMALS="2"/>
         <FIELD NAME="skillgrade" TYPE="number" LENGTH="5" NOTNULL="false" SEQUENCE="false" DECIMALS="2"/>
         <FIELD NAME="quizgrade" TYPE="number" LENGTH="5" NOTNULL="false" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="practicegrade" TYPE="number" LENGTH="5" NOTNULL="false" SEQUENCE="false" DECIMALS="2"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
@@ -136,6 +146,23 @@
       </INDEXES>
     </TABLE>
     <TABLE NAME="aiel_quizattempts" COMMENT="Completed quiz attempts">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="versionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="attemptno" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="answers" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="5" NOTNULL="true" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="attempt" FIELDS="versionid, userid, attemptno" UNIQUE="true"/>
+        <INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_practiceattempts" COMMENT="Completed practice game attempts">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="lessonid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
