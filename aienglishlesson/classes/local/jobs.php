@@ -74,7 +74,10 @@ class jobs {
             }
             $part = ($provider ?? new gemini())->generate_stage($activity, array_values($files), (int)$job->stage, $partial);
             if ($job->stage < 2) { $partial['sections'] = array_merge($partial['sections'], $part['sections']); }
-            else { $partial['quiz'] = $part['quiz']; }
+            else {
+                $partial['quiz'] = $part['quiz'];
+                if (!empty($part['activities'])) { $partial['activities'] = $part['activities']; }
+            }
             $content = (int)$job->stage === 2 ? gemini::assemble($activity, $partial) : null;
             $lock = \core\lock\lock_config::get_lock_factory('mod_aienglishlesson')->get_lock('lesson' . $job->lessonid, 10);
             if (!$lock) { throw new \moodle_exception('busy', 'aienglishlesson'); }
