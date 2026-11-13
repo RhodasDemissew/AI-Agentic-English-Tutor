@@ -28,22 +28,53 @@ class assessment {
         return array_intersect_key($saved, $defaults);
     }
 
-    /** Aggregate the latest scored response for each of the four fixed lesson skills. */
-    public static function grade_from_attempts(array $content, array $attempts): ?float {
+    /** Weights used when a lesson has graded practice games. Lessons without games keep the original formula. */
+    public const WEIGHTS = ['skills' => 0.4, 'quiz' => 0.3, 'practice' => 0.3];
+
+    /**
+     * Latest score per skill from attempts ordered newest first.
+     * Each value is ['score' => ?int, 'approved' => bool]; skills without an attempt are absent.
+     */
+    public static function skill_scores(array $content, array $attempts): array {
         $scores = [];
         foreach ($attempts as $row) {
             $kind = $content['sections'][$row->sectionno]['kind'] ?? '';
             if (in_array($kind, self::SKILLS, true) && !array_key_exists($kind, $scores)) {
-                $scores[$kind] = $row->timeapproved ? (int)$row->teacherscore :
-                    (($row->aistatus ?? '') === 'succeeded' ? (int)$row->aiscore : null);
+                $scores[$kind] = ['approved' => !empty($row->timeapproved), 'score' => $row->timeapproved ? (int)$row->teacherscore :
+                    (($row->aistatus ?? '') === 'succeeded' ? (int)$row->aiscore : null)];
             }
         }
+        return $scores;
+    }
+
+    /** Aggregate the latest scored response for each of the four fixed lesson skills. */
+    public static function grade_from_attempts(array $content, array $attempts): ?float {
+        $scores = array_column(self::skill_scores($content, $attempts), 'score');
         return count($scores) === 4 && !in_array(null, $scores, true) ? array_sum($scores) / 4 : null;
     }
 
-    public static function final_grade(?float $skills, ?float $quiz, bool $hasquiz): ?float {
-        if ($skills === null || ($hasquiz && $quiz === null)) { return null; }
+    public static function final_grade(?float $skills, ?float $quiz, bool $hasquiz, ?float $practice = null,
+            bool $haspractice = false): ?float {
+        if ($skills === null || ($hasquiz && $quiz === null) || ($haspractice && $practice === null)) { return null; }
+        if ($haspractice) {
+            $w = self::WEIGHTS;
+            $total = $w['skills'] * $skills + $w['practice'] * $practice + ($hasquiz ? $w['quiz'] * $quiz : 0);
+            return round($total / ($w['skills'] + $w['practice'] + ($hasquiz ? $w['quiz'] : 0)), 2);
+        }
         return $hasquiz ? ($skills + $quiz) / 2 : $skills;
+    }
+
+    /** AI evaluation requests made for one learner in the last 24 hours (all activities). */
+    public static function student_ai_used(int $userid): int {
+        global $DB;
+        return $DB->count_records_select('aiel_usage', 'purpose = ? AND userid = ? AND timecreated > ?',
+            ['assess', $userid, time() - DAYSECS]);
+    }
+
+    /** Per-learner rolling 24-hour AI feedback allowance; 0 means unlimited. */
+    public static function student_ai_limit(): int {
+        $value = get_config('aienglishlesson', 'studentdailyai');
+        return $value === false || $value === '' ? 12 : max(0, (int)$value);
     }
 
     public static function is_nonattempt(string $response, bool $hasmedia): bool {
@@ -89,13 +120,21 @@ class assessment {
                 $rubric .= "\nMandatory: Score only the voice recording. Disregard any rubric wording about typed notes or images.";
             }
             $nonattempt = !$speaking && self::is_nonattempt($attempt->response, (bool)$media);
+            $limit = self::student_ai_limit();
+            if (!$nonattempt && !$provider && $limit > 0 && self::student_ai_used((int)$attempt->userid) >= $limit) {
+                // The answer stays saved for the teacher; this learner's daily AI allowance is used up.
+                $DB->set_field('aiel_responses', 'aistatus', 'limited', ['id' => $attemptid]);
+                return;
+            }
             $result = $nonattempt ? ['score' => 0, 'confidence' => 100,
                 'feedback' => get_string('nonattemptfeedback', 'aienglishlesson')] :
-                ($provider ?? new gemini())->assess($section, $speaking ? '' : $attempt->response, $rubric, $media);
+                ($provider ?? (new gemini())->set_usage_context((int)$attempt->lessonid, (int)$attempt->userid))
+                    ->assess($section, $speaking ? '' : $attempt->response, $rubric, $media);
             if ($DB->record_exists('aiel_responses', ['id' => $attemptid])) {
                 $DB->update_record('aiel_responses', (object)['id' => $attemptid, 'aistatus' => 'succeeded',
                     'aiscore' => $result['score'], 'aifeedback' => $result['feedback'],
-                    'aiconfidence' => $result['confidence']]);
+                    'aiconfidence' => $result['confidence'], 'aimistake' => $result['mistake'] ?? '',
+                    'aitranscript' => $result['heard'] ?? '']);
             }
         } catch (\Throwable $e) {
             // Never expose provider errors, credentials, or raw responses to learners.
@@ -182,7 +221,10 @@ class assessment {
         $skills = self::grade_from_attempts($content, $attempts);
         $latestquiz = isset($content['quiz']) ? quiz::latest((int)$version->id, $userid) : false;
         $quizgrade = $latestquiz ? (float)$latestquiz->score : null;
-        $grade = self::final_grade($skills, $quizgrade, isset($content['quiz']));
+        $haspractice = !empty($content['activities']);
+        $latestpractice = $haspractice ? practice::latest((int)$version->id, $userid) : false;
+        $practicegrade = $latestpractice ? (float)$latestpractice->score : null;
+        $grade = self::final_grade($skills, $quizgrade, isset($content['quiz']), $practicegrade, $haspractice);
         if ($grade === null) { return; }
         require_once(__DIR__ . '/../../lib.php');
         $activity = $DB->get_record('aienglishlesson', ['id' => $version->lessonid], '*', MUST_EXIST);
@@ -196,7 +238,8 @@ class assessment {
         $record = $DB->get_record('aiel_grades', ['lessonid' => $version->lessonid, 'userid' => $userid]);
         $record = $record ?: (object)['lessonid' => $version->lessonid, 'userid' => $userid];
         $record->versionid = $version->id; $record->grade = $grade;
-        $record->skillgrade = $skills; $record->quizgrade = $quizgrade; $record->timemodified = time();
+        $record->skillgrade = $skills; $record->quizgrade = $quizgrade; $record->practicegrade = $practicegrade;
+        $record->timemodified = time();
         $tx = $DB->start_delegated_transaction();
         if (empty($record->id)) { $DB->insert_record('aiel_grades', $record); }
         else { $DB->update_record('aiel_grades', $record); }
