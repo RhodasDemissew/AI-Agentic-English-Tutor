@@ -49,7 +49,33 @@ if ($data = $form->get_data()) {
             }
             unset($question);
         }
-        $current->content = json_encode(\mod_aienglishlesson\local\lesson::validate(json_encode($content)));
+        if (!empty($content['activities'])) {
+            $lines = static function($text): array {
+                return array_values(array_filter(array_map('trim', preg_split('/\R/u', (string)$text)), 'strlen'));
+            };
+            $edited = [];
+            foreach ($content['activities'] as $i => $activity) {
+                $item = ['type' => $activity['type'], 'prompt' => $data->{'act_prompt_' . $i} ?? ''];
+                if ($activity['type'] === 'order') {
+                    $item['items'] = $lines($data->{'act_words_' . $i} ?? '');
+                } else if ($activity['type'] === 'match') {
+                    $item['pairs'] = array_map(static function($line) {
+                        $parts = array_map('trim', explode('|', $line, 2));
+                        return ['left' => $parts[0] ?? '', 'right' => $parts[1] ?? ''];
+                    }, $lines($data->{'act_pairs_' . $i} ?? ''));
+                } else {
+                    $item['sentence'] = $data->{'act_sentence_' . $i} ?? '';
+                    $item['choices'] = $lines($data->{'act_choices_' . $i} ?? '');
+                    $item['correct'] = (int)($data->{'act_correct_' . $i} ?? 0);
+                }
+                $edited[] = $item;
+            }
+            // Games made incomplete by an edit are dropped; with fewer than three left, the lesson has no games.
+            $cleaned = \mod_aienglishlesson\local\lesson::clean_activities($edited);
+            if ($cleaned === null) { unset($content['activities']); }
+            else { $content['activities'] = $cleaned; }
+        }
+        $current->content =json_encode(\mod_aienglishlesson\local\lesson::validate(json_encode($content)));
         $current->timemodified = max(time(), $current->timemodified + 1);
         $audiochanged = $originalscripts !== array_column($content['sections'], 'audioscript');
         if ($audiochanged) { $current->audiostatus = 'none'; }
