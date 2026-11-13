@@ -77,5 +77,33 @@ function xmldb_aienglishlesson_upgrade($oldversion) {
         }
         upgrade_mod_savepoint(true, 2026111000, 'aienglishlesson');
     }
+    if ($oldversion < 2026111300) {
+        $manager = $DB->get_manager();
+        $usage = new xmldb_table('aiel_usage');
+        foreach ([
+            new xmldb_field('purpose', XMLDB_TYPE_CHAR, '20'),
+            new xmldb_field('model', XMLDB_TYPE_CHAR, '100'),
+            new xmldb_field('status', XMLDB_TYPE_INTEGER, '10'),
+            new xmldb_field('inputtokens', XMLDB_TYPE_INTEGER, '10'),
+            new xmldb_field('outputtokens', XMLDB_TYPE_INTEGER, '10'),
+            new xmldb_field('userid', XMLDB_TYPE_INTEGER, '10'),
+            new xmldb_field('lessonid', XMLDB_TYPE_INTEGER, '10'),
+        ] as $field) {
+            if (!$manager->field_exists($usage, $field)) { $manager->add_field($usage, $field); }
+        }
+        $responses = new xmldb_table('aiel_responses');
+        foreach (['aitranscript', 'aimistake'] as $name) {
+            $field = new xmldb_field($name, XMLDB_TYPE_TEXT);
+            if (!$manager->field_exists($responses, $field)) { $manager->add_field($responses, $field); }
+        }
+        $grades = new xmldb_table('aiel_grades');
+        $practicegrade = new xmldb_field('practicegrade', XMLDB_TYPE_NUMBER, '5, 2');
+        if (!$manager->field_exists($grades, $practicegrade)) { $manager->add_field($grades, $practicegrade); }
+        $xml = new xmldb_file(__DIR__ . '/install.xml');
+        $xml->loadXMLStructure();
+        $table = $xml->getStructure()->getTable('aiel_practiceattempts');
+        if (!$manager->table_exists($table)) { $manager->create_table($table); }
+        upgrade_mod_savepoint(true, 2026111300, 'aienglishlesson');
+    }
     return true;
 }
