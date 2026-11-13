@@ -89,16 +89,5 @@ if ($data = $form->get_data()) {
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('editdraft', 'aienglishlesson'));
 echo $OUTPUT->notification(get_string('exactanswerhelp', 'aienglishlesson'), 'info');
-$visualrefs = \mod_aienglishlesson\local\lesson::visual_question_references($content);
-if ($visualrefs) {
-    $locations = [];
-    foreach ($visualrefs as $ref) {
-        $locations[] = $ref['type'] === 'quiz' ?
-            get_string('quizquestion', 'aienglishlesson', $ref['index'] + 1) :
-            $content['sections'][$ref['index']]['title'];
-    }
-    echo $OUTPUT->notification(get_string('visualquestionwarning', 'aienglishlesson',
-        implode(', ', $locations)), 'warning');
-}
 $form->display();
 echo $OUTPUT->footer();
