@@ -39,11 +39,24 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('quiz', 'aienglishlesson'));
 echo html_writer::link($back, get_string('backtolesson', 'aienglishlesson'), ['class' => 'btn btn-secondary mb-3']);
 $latest = \mod_aienglishlesson\local\quiz::latest($versionid, $USER->id);
-if ($latest) {
-    echo html_writer::div(get_string('quizresult', 'aienglishlesson', (object)[
-        'score' => $latest->score, 'attempts' => $latest->attemptno]), 'alert alert-info');
-}
 $review = $manage || (optional_param('review', 0, PARAM_BOOL) && $latest);
+if ($latest && !$manage && $review) {
+    $band = $latest->score >= 80 ? 'high' : ($latest->score >= 50 ? 'mid' : 'low');
+    $correctcount = (int)round($latest->score * count($content['quiz']) / 100);
+    echo html_writer::div(
+        html_writer::div(html_writer::tag('span', format_float($latest->score, 0) . '%', ['class' => 'aiel-result-percent']),
+            'aiel-result-dial') .
+        html_writer::div(
+            html_writer::tag('p', get_string('resultmessage_' . $band, 'aienglishlesson'), ['class' => 'aiel-result-message']) .
+            html_writer::tag('p', get_string('quizcorrectcount', 'aienglishlesson',
+                (object)['correct' => $correctcount, 'total' => count($content['quiz'])]), ['class' => 'aiel-result-detail']) .
+            html_writer::tag('p', get_string('attemptcount', 'aienglishlesson', $latest->attemptno) . ' · ' .
+                get_string('latestcounts', 'aienglishlesson'), ['class' => 'aiel-banner-meta']),
+            'aiel-result-text'),
+        'aiel-result-card aiel-band-' . $band);
+} else if ($latest && !$manage) {
+    echo html_writer::tag('p', get_string('lastscore', 'aienglishlesson', format_float($latest->score, 0)), ['class' => 'aiel-note']);
+}
 $saved = $latest ? json_decode($latest->answers, true) : [];
 if ($latest && !$manage) {
     echo html_writer::link(new moodle_url('/mod/aienglishlesson/quiz.php',
@@ -94,7 +107,18 @@ foreach ($content['quiz'] as $i => $question) {
 }
 if (!$manage && !$review) {
     echo html_writer::tag('button', get_string('submitquiz', 'aienglishlesson'),
-        ['type' => 'submit', 'class' => 'btn btn-primary my-3']);
+        ['type' => 'submit', 'class' => 'btn btn-primary btn-lg my-3']);
     echo html_writer::end_tag('form');
+}
+if ($review && !$manage) {
+    // End-of-quiz actions, repeated at the bottom so students don't have to scroll back up.
+    $endbar = html_writer::link(new moodle_url($url, ['review' => 0]), get_string('retakequiz', 'aienglishlesson'),
+        ['class' => 'btn btn-secondary']);
+    if (!empty($content['activities']) && !\mod_aienglishlesson\local\practice::latest($versionid, $USER->id)) {
+        $endbar .= html_writer::link(new moodle_url('/mod/aienglishlesson/practice.php', ['id' => $id, 'version' => $versionid]),
+            get_string('herogames', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
+    }
+    $endbar .= html_writer::link($back, get_string('finishlesson', 'aienglishlesson'), ['class' => 'btn btn-primary']);
+    echo html_writer::div($endbar, 'aiel-toolbar aiel-endbar');
 }
 echo $OUTPUT->footer();
