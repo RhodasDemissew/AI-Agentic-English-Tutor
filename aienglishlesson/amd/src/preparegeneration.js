@@ -1,7 +1,31 @@
 /* GPL-3.0-or-later. Each request produces one bounded lesson stage. */
 define([], function() {
+    var STAGES = 3;
+
     return {init: async function(config) {
         var status = document.getElementById('aiel-generation-progress');
+        var bar = document.getElementById('aiel-generation-bar');
+        var back = document.getElementById('aiel-generation-back');
+        var shown = 0;
+        var cap = 0;
+
+        // Each stage is one long request, so ease towards (but never reach) the end of the current stage.
+        var show = function(value) {
+            shown = Math.max(shown, Math.min(100, value));
+            var percent = Math.floor(shown);
+            bar.style.width = Math.max(2, percent) + '%';
+            bar.parentNode.setAttribute('aria-valuenow', percent);
+            status.textContent = config.working.replace('{percent}', percent);
+        };
+        var timer = setInterval(function() {
+            if (shown < cap) { show(shown + Math.max(0.05, (cap - shown) * 0.015)); }
+        }, 400);
+        var stageCap = function(done) {
+            cap = Math.min(99, ((done + 0.92) / STAGES) * 100);
+            show((done / STAGES) * 100);
+        };
+
+        stageCap(0);
         try {
             for (var step = 0; step < 100; step++) {
                 var body = new URLSearchParams({id: config.id, job: config.job, sesskey: config.sesskey, step: 1});
@@ -9,6 +33,9 @@ define([], function() {
                 if (!response.ok) { throw new Error('request'); }
                 var result = await response.json();
                 if (result.status === 'succeeded' && result.version) {
+                    clearInterval(timer);
+                    cap = 100;
+                    show(100);
                     var url = config.audioenabled ? config.audiourl + '?id=' + encodeURIComponent(config.id) +
                         '&version=' + encodeURIComponent(result.version) : config.lessonurl + '&version=' +
                         encodeURIComponent(result.version);
@@ -16,13 +43,17 @@ define([], function() {
                     return;
                 }
                 if (result.status === 'failed') { throw new Error('failed'); }
-                status.textContent = config.working + ' (' + Math.min(3, result.stage + 1) + '/3)';
+                stageCap(Math.min(STAGES - 1, result.stage));
                 if (result.status === 'running') { await new Promise(function(resolve) { setTimeout(resolve, 5000); }); }
             }
             throw new Error('limit');
         } catch (error) {
+            clearInterval(timer);
             status.textContent = config.failed;
-            status.className = 'alert alert-warning';
+            status.className = 'alert alert-warning mt-3';
+            bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            bar.classList.add('bg-warning');
+            if (back) { back.hidden = false; }
         }
     }};
 });
