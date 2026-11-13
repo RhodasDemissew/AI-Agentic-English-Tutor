@@ -108,8 +108,14 @@ if ($action === 'generate' || $action === 'resume') {
             $DB->insert_record('aiel_progress', (object)($record + ['lessonid' => $cm->instance, 'timemodified' => time()]));
         }
     } finally { $lock->release(); }
-    if ($section === count($content['sections']) - 1 && isset($content['quiz'])) {
-        redirect(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $versionid]));
+    if ($section === count($content['sections']) - 1) {
+        // After the recap: practice games first (when the lesson has them), then the quiz.
+        if (!empty($content['activities'])) {
+            redirect(new moodle_url('/mod/aienglishlesson/practice.php', ['id' => $id, 'version' => $versionid]));
+        }
+        if (isset($content['quiz'])) {
+            redirect(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $versionid]));
+        }
     }
     $back->param('section', min($section + 1, count($content['sections']) - 1));
 } else { throw new moodle_exception('invalidrequest'); }
