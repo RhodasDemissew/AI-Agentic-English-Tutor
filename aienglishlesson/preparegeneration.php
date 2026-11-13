@@ -36,13 +36,21 @@ $PAGE->requires->js_call_amd('mod_aienglishlesson/preparegeneration', 'init', [[
     'lessonurl' => $back->out(false),
     'audiourl' => (new moodle_url('/mod/aienglishlesson/prepareaudio.php'))->out(false),
     'audioenabled' => \mod_aienglishlesson\local\audio::provider() !== 'upload',
-    'working' => get_string('generationworking', 'aienglishlesson'),
+    'working' => get_string('generationworking', 'aienglishlesson', '{percent}'),
     'failed' => get_string('generationstopped', 'aienglishlesson'),
 ]]);
 echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('generate', 'aienglishlesson'));
-echo html_writer::div(get_string('generationworking', 'aienglishlesson'), 'alert alert-info',
-    ['id' => 'aiel-generation-progress', 'role' => 'status']);
-echo html_writer::link($back, get_string('backtolesson', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
+echo html_writer::start_div('aiel-progress-panel');
+echo html_writer::tag('h2', get_string('generatingtitle', 'aienglishlesson'));
+echo html_writer::div(html_writer::div('', 'progress-bar progress-bar-striped progress-bar-animated',
+    ['id' => 'aiel-generation-bar', 'style' => 'width: 2%']), 'progress aiel-progress-bar', [
+    'role' => 'progressbar', 'aria-valuemin' => 0, 'aria-valuemax' => 100, 'aria-valuenow' => 0,
+    'aria-label' => get_string('generatingtitle', 'aienglishlesson')]);
+echo html_writer::div(get_string('generationworking', 'aienglishlesson', 0), 'aiel-progress-text',
+    ['id' => 'aiel-generation-progress', 'role' => 'status', 'aria-live' => 'polite']);
+echo html_writer::div(get_string('keeppageopen', 'aienglishlesson'), 'aiel-note');
+echo html_writer::div(html_writer::link($back, get_string('backtolesson', 'aienglishlesson'),
+    ['class' => 'btn btn-secondary', 'id' => 'aiel-generation-back', 'hidden' => 'hidden']), 'mt-3');
 echo html_writer::tag('noscript', get_string('generationjavascript', 'aienglishlesson'));
+echo html_writer::end_div();
 echo $OUTPUT->footer();
