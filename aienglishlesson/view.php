@@ -149,25 +149,6 @@ if ($manage) {
     if ($details) { echo html_writer::div($details, 'aiel-teacher-details'); }
     if ($version && $version->status === 'draft') {
         $draftcontent = \mod_aienglishlesson\local\lesson::validate($version->content);
-        $visualrefs = \mod_aienglishlesson\local\lesson::visual_question_references($draftcontent);
-        if ($visualrefs) {
-            $locations = [];
-            foreach ($visualrefs as $ref) {
-                $locations[] = $ref['type'] === 'quiz' ?
-                    get_string('quizquestion', 'aienglishlesson', $ref['index'] + 1) :
-                    $draftcontent['sections'][$ref['index']]['title'];
-            }
-            echo $OUTPUT->notification(get_string('visualquestionwarning', 'aienglishlesson',
-                implode(', ', $locations)), 'warning');
-        }
-        $speechtarget = \mod_aienglishlesson\local\gemini::speech_word_guidance((string)$activity->gradeband)['target'];
-        foreach ($draftcontent['sections'] as $sectiondata) {
-            if (in_array($sectiondata['kind'], ['listening', 'speaking'], true) &&
-                    str_word_count($sectiondata['audioscript'] ?? '') < $speechtarget) {
-                echo $OUTPUT->notification(get_string('shortaudioreview', 'aienglishlesson'), 'warning');
-                break;
-            }
-        }
         $audiostatus = explode(':', (string)$version->audiostatus)[0];
         if ($audiostatus !== 'ready' && $audiostatus !== 'none') {
             $audiokey = 'audiostatus_' . $audiostatus;
@@ -185,9 +166,12 @@ if ($manage) {
             $draftbar .= html_writer::link(new moodle_url('/mod/aienglishlesson/practice.php', ['id' => $id, 'version' => $version->id]),
                 get_string('reviewpractice', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
         }
-        if (\mod_aienglishlesson\local\audio::provider() !== 'upload') {
+        // Audio is prepared automatically after generation; offer a retry only when some is still missing.
+        if (\mod_aienglishlesson\local\audio::provider() !== 'upload' &&
+                !in_array($audiostatus, ['ready', 'queued', 'running'], true) &&
+                !\mod_aienglishlesson\local\audio::ready($version, $context)) {
             $url = \mod_aienglishlesson\local\jobs::direct() ? '/mod/aienglishlesson/prepareaudio.php' : '/mod/aienglishlesson/action.php';
-            $draftbar .= $OUTPUT->single_button(new moodle_url($url, ['id' => $id, 'version' => $version->id, 'action' => 'audio']), get_string('buildaudio', 'aienglishlesson'), 'post');
+            $draftbar .= $OUTPUT->single_button(new moodle_url($url, ['id' => $id, 'version' => $version->id, 'action' => 'audio']), get_string('retryaudio', 'aienglishlesson'), 'post');
         }
         $draftbar .= $OUTPUT->single_button(new moodle_url('/mod/aienglishlesson/action.php', ['id' => $id, 'version' => $version->id, 'modified' => $version->timemodified, 'action' => 'publish']), get_string('publish', 'aienglishlesson'), 'post', ['type' => 'primary']);
         echo html_writer::div($draftbar, 'aiel-toolbar aiel-toolbar--draft');
