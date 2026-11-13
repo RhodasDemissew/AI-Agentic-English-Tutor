@@ -13,15 +13,20 @@ class backup_aienglishlesson_activity_structure_step extends backup_activity_str
         $responses = new backup_nested_element('responses');
         $response = new backup_nested_element('response', ['id'], ['versionid', 'userid', 'sectionno', 'response',
             'aistatus', 'aiscore', 'aifeedback', 'aiconfidence', 'teacherscore', 'teacherfeedback',
-            'approvedby', 'timeapproved', 'timemodified']);
+            'approvedby', 'timeapproved', 'timemodified', 'aitranscript', 'aimistake']);
         $root->add_child($responses); $responses->add_child($response);
         $grades = new backup_nested_element('grades');
-        $grade = new backup_nested_element('grade', ['id'], ['versionid', 'userid', 'grade', 'skillgrade', 'quizgrade', 'timemodified']);
+        $grade = new backup_nested_element('grade', ['id'], ['versionid', 'userid', 'grade', 'skillgrade', 'quizgrade',
+            'practicegrade', 'timemodified']);
         $root->add_child($grades); $grades->add_child($grade);
         $quizattempts = new backup_nested_element('quizattempts');
         $quizattempt = new backup_nested_element('quizattempt', ['id'], ['versionid', 'userid', 'attemptno',
             'answers', 'score', 'timecreated']);
         $root->add_child($quizattempts); $quizattempts->add_child($quizattempt);
+        $practiceattempts = new backup_nested_element('practiceattempts');
+        $practiceattempt = new backup_nested_element('practiceattempt', ['id'], ['versionid', 'userid', 'attemptno',
+            'answers', 'score', 'timecreated']);
+        $root->add_child($practiceattempts); $practiceattempts->add_child($practiceattempt);
         $root->set_source_table('aienglishlesson', ['id' => backup::VAR_ACTIVITYID]);
         $version->set_source_table('aiel_versions', ['lessonid' => backup::VAR_PARENTID]);
         $version->annotate_files('mod_aienglishlesson', 'audio', 'id');
@@ -36,6 +41,8 @@ class backup_aienglishlesson_activity_structure_step extends backup_activity_str
             $grade->annotate_ids('user', 'userid');
             $quizattempt->set_source_table('aiel_quizattempts', ['lessonid' => backup::VAR_PARENTID]);
             $quizattempt->annotate_ids('user', 'userid');
+            $practiceattempt->set_source_table('aiel_practiceattempts', ['lessonid' => backup::VAR_PARENTID]);
+            $practiceattempt->annotate_ids('user', 'userid');
         }
         $root->annotate_files('mod_aienglishlesson', 'intro', null);
         $root->annotate_files('mod_aienglishlesson', 'source', null);
