@@ -1,0 +1,328 @@
+/* GPL-3.0-or-later. Live practice games: one card at a time, checked by the server, first try counts. */
+define([], function() {
+    'use strict';
+
+    var PAIR_COLOURS = 5;
+
+    function el(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) { node.className = className; }
+        if (text !== undefined && text !== null) { node.textContent = text; }
+        return node;
+    }
+
+    function button(className, text) {
+        var node = el('button', className, text);
+        node.type = 'button';
+        return node;
+    }
+
+    function fmt(template, values) {
+        return template.replace(/\{\$a->(\w+)\}/g, function(all, key) {
+            return values[key] !== undefined ? values[key] : all;
+        }).replace('{$a}', values.a !== undefined ? values.a : '');
+    }
+
+    /** Word order: tap words into the answer line; tap a placed word to send it back. */
+    function orderGame(game, body, onReady) {
+        var placed = [];
+        var line = el('div', 'aiel-arcade-line');
+        var pool = el('div', 'aiel-arcade-pool');
+        var chips = game.words.map(function(word) {
+            var chip = button('aiel-word', word);
+            chip.addEventListener('click', function() {
+                if (chip.disabled) { return; }
+                placed.push(chip);
+                chip.disabled = true;
+                draw();
+            });
+            pool.appendChild(chip);
+            return chip;
+        });
+        function draw() {
+            line.textContent = '';
+            placed.forEach(function(chip, index) {
+                var slot = button('aiel-word aiel-word--placed', chip.textContent);
+                slot.addEventListener('click', function() {
+                    if (line.dataset.locked) { return; }
+                    placed.splice(index, 1);
+                    chip.disabled = false;
+                    draw();
+                });
+                line.appendChild(slot);
+            });
+            line.classList.toggle('aiel-arcade-line--empty', placed.length === 0);
+            onReady(placed.length === chips.length);
+        }
+        body.appendChild(line);
+        body.appendChild(pool);
+        draw();
+        return {
+            answer: function() { return placed.map(function(chip) { return chip.textContent; }); },
+            lock: function() { line.dataset.locked = '1'; chips.forEach(function(chip) { chip.disabled = true; }); },
+            reset: function() { placed = []; chips.forEach(function(chip) { chip.disabled = false; }); draw(); }
+        };
+    }
+
+    /** Matching: tap a term, then its meaning. Pairs share a colour; tap a paired term to undo. */
+    function matchGame(game, body, onReady) {
+        var chosen = null;
+        var pairs = {};
+        var used = {};
+        var grid = el('div', 'aiel-arcade-match');
+        var leftcol = el('div', 'aiel-arcade-col');
+        var rightcol = el('div', 'aiel-arcade-col');
+        var lefts = game.lefts.map(function(text, i) {
+            var node = button('aiel-tile aiel-tile--left', text);
+            node.addEventListener('click', function() {
+                if (grid.dataset.locked) { return; }
+                if (pairs[i] !== undefined) {
+                    delete used[pairs[i]];
+                    delete pairs[i];
+                    chosen = null;
+                    draw();
+                    return;
+                }
+                chosen = chosen === i ? null : i;
+                draw();
+            });
+            leftcol.appendChild(node);
+            return node;
+        });
+        var rights = game.rights.map(function(text, j) {
+            var node = button('aiel-tile aiel-tile--right', text);
+            node.addEventListener('click', function() {
+                if (grid.dataset.locked || chosen === null || used[j] !== undefined) { return; }
+                pairs[chosen] = j;
+                used[j] = chosen;
+                chosen = null;
+                draw();
+            });
+            rightcol.appendChild(node);
+            return node;
+        });
+        function draw() {
+            lefts.forEach(function(node, i) {
+                node.className = 'aiel-tile aiel-tile--left' + (chosen === i ? ' aiel-tile--chosen' : '') +
+                    (pairs[i] !== undefined ? ' aiel-pair-' + (i % PAIR_COLOURS) : '');
+            });
+            rights.forEach(function(node, j) {
+                node.className = 'aiel-tile aiel-tile--right' +
+                    (used[j] !== undefined ? ' aiel-pair-' + (used[j] % PAIR_COLOURS) : '') +
+                    (chosen !== null && used[j] === undefined ? ' aiel-tile--target' : '');
+            });
+            onReady(Object.keys(pairs).length === lefts.length);
+        }
+        grid.appendChild(leftcol);
+        grid.appendChild(rightcol);
+        body.appendChild(grid);
+        draw();
+        return {
+            answer: function() { return lefts.map(function(node, i) { return game.rights[pairs[i]]; }); },
+            lock: function() { grid.dataset.locked = '1'; },
+            reset: function() { pairs = {}; used = {}; chosen = null; draw(); }
+        };
+    }
+
+    /** Gap fill: tap a choice; the sentence fills in as you choose. */
+    function gapGame(game, body, onReady) {
+        var picked = null;
+        var parts = game.sentence.split('___');
+        var sentence = el('p', 'aiel-arcade-sentence');
+        var blank = el('span', 'aiel-arcade-blank', '?');
+        sentence.appendChild(document.createTextNode(parts[0] || ''));
+        sentence.appendChild(blank);
+        sentence.appendChild(document.createTextNode(parts[1] || ''));
+        var choices = el('div', 'aiel-arcade-choices');
+        var nodes = game.choices.map(function(text, i) {
+            var node = button('aiel-tile', text);
+            node.addEventListener('click', function() {
+                if (choices.dataset.locked) { return; }
+                picked = i;
+                blank.textContent = text;
+                blank.classList.add('aiel-arcade-blank--filled');
+                nodes.forEach(function(other, k) { other.classList.toggle('aiel-tile--chosen', k === i); });
+                onReady(true);
+            });
+            choices.appendChild(node);
+            return node;
+        });
+        body.appendChild(sentence);
+        body.appendChild(choices);
+        onReady(false);
+        return {
+            answer: function() { return picked; },
+            lock: function() { choices.dataset.locked = '1'; },
+            reset: function() {
+                picked = null;
+                blank.textContent = '?';
+                blank.classList.remove('aiel-arcade-blank--filled');
+                nodes.forEach(function(node) { node.classList.remove('aiel-tile--chosen'); });
+                onReady(false);
+            },
+            blank: blank
+        };
+    }
+
+    function solutionText(type, solution) {
+        if (type === 'order') { return solution; }
+        if (type === 'gap') { return solution.sentence; }
+        return solution.map(function(pair) { return pair.left + ' → ' + pair.right; }).join(' · ');
+    }
+
+    function post(config, params) {
+        var body = new URLSearchParams(params);
+        body.set('sesskey', config.sesskey);
+        body.set('token', config.token);
+        return fetch(config.url, {method: 'POST', credentials: 'same-origin', body: body}).then(function(response) {
+            return response.json().then(function(data) {
+                if (!response.ok || data.error) { throw new Error(data.error || 'request'); }
+                return data;
+            });
+        });
+    }
+
+    function init() {
+        var root = document.getElementById('aiel-arcade');
+        if (!root || root.dataset.initialized || !window.fetch || !window.URLSearchParams) { return; }
+        root.dataset.initialized = '1';
+        var config = JSON.parse(root.dataset.config);
+        var s = config.strings;
+        var fallback = document.querySelector('.aiel-practice-form');
+        if (fallback) { fallback.hidden = true; }
+        root.hidden = false;
+
+        var index = 0;
+        var points = 0;
+        var hud = el('div', 'aiel-arcade-hud');
+        var counter = el('span', 'aiel-arcade-counter');
+        var score = el('span', 'aiel-arcade-points');
+        var bar = el('div', 'aiel-arcade-bar');
+        var fill = el('span');
+        bar.appendChild(fill);
+        hud.appendChild(counter);
+        hud.appendChild(score);
+        root.appendChild(hud);
+        root.appendChild(bar);
+        var stage = el('div', 'aiel-arcade-stage');
+        root.appendChild(stage);
+        var builders = {order: orderGame, match: matchGame, gap: gapGame};
+        var hints = {order: s.gametapwords, match: s.gametapmatch, gap: s.gametapgap};
+        var labels = {order: s.gameorder, match: s.gamematch, gap: s.gamegap};
+
+        function updateHud() {
+            counter.textContent = fmt(s.gameofn, {current: Math.min(index + 1, config.games.length), total: config.games.length});
+            score.textContent = '★ ' + fmt(s.gamepoints, {a: points});
+            fill.style.width = Math.round(100 * index / config.games.length) + '%';
+        }
+
+        function showError(message) {
+            var alert = el('p', 'aiel-field-error', message || s.practicesession);
+            alert.setAttribute('role', 'alert');
+            stage.appendChild(alert);
+        }
+
+        function showGame() {
+            updateHud();
+            stage.textContent = '';
+            var game = config.games[index];
+            var card = el('section', 'aiel-arcade-card aiel-arcade-card--' + game.type);
+            card.appendChild(el('span', 'aiel-chip', labels[game.type]));
+            card.appendChild(el('h3', 'aiel-arcade-prompt', game.prompt));
+            card.appendChild(el('p', 'aiel-note', hints[game.type]));
+            var body = el('div', 'aiel-arcade-body');
+            card.appendChild(body);
+            var feedback = el('div', 'aiel-arcade-feedback');
+            feedback.setAttribute('role', 'status');
+            feedback.setAttribute('aria-live', 'polite');
+            var actions = el('div', 'aiel-arcade-actions');
+            var reset = button('btn btn-link', s.gamereset);
+            var check = button('btn btn-primary btn-lg', s.gamecheck);
+            check.disabled = true;
+            var widget = builders[game.type](game, body, function(ready) { check.disabled = !ready; });
+            reset.addEventListener('click', function() { widget.reset(); });
+            actions.appendChild(reset);
+            actions.appendChild(check);
+            card.appendChild(feedback);
+            card.appendChild(actions);
+            stage.appendChild(card);
+            card.classList.add('aiel-arcade-enter');
+
+            check.addEventListener('click', function() {
+                check.disabled = true;
+                reset.disabled = true;
+                widget.lock();
+                post(config, {ajax: 'check', game: index, answer: JSON.stringify(widget.answer())}).then(function(result) {
+                    if (result.correct) {
+                        points++;
+                        card.classList.add('aiel-arcade-card--right');
+                        feedback.appendChild(el('strong', 'aiel-arcade-verdict', '✓ ' + s.gameright));
+                        feedback.appendChild(el('span', 'aiel-arcade-plus', '+1 ★'));
+                    } else {
+                        card.classList.add('aiel-arcade-card--wrong');
+                        feedback.appendChild(el('strong', 'aiel-arcade-verdict', '✗ ' + s.gamewrong));
+                        feedback.appendChild(el('p', 'aiel-arcade-solution',
+                            fmt(s.gameanswerwas, {a: solutionText(game.type, result.solution)})));
+                    }
+                    updateHud();
+                    actions.textContent = '';
+                    var last = index === config.games.length - 1;
+                    var next = button('btn btn-primary btn-lg', last ? s.gamefinish : s.gamenext);
+                    next.addEventListener('click', function() {
+                        if (last) { finish(); } else { index++; showGame(); }
+                    });
+                    actions.appendChild(next);
+                    next.focus();
+                }).catch(function(error) { showError(error.message); });
+            });
+        }
+
+        function finish() {
+            index = config.games.length;
+            updateHud();
+            stage.textContent = '';
+            stage.appendChild(el('p', 'aiel-note', s.gamefinishing));
+            post(config, {ajax: 'finish'}).then(function(result) {
+                stage.textContent = '';
+                var done = el('section', 'aiel-arcade-done aiel-band-' + result.band);
+                var stars = el('p', 'aiel-arcade-stars');
+                stars.setAttribute('aria-label', result.stars + ' / 3');
+                for (var i = 1; i <= 3; i++) {
+                    var star = el('span', i <= result.stars ? 'aiel-star aiel-star--on' : 'aiel-star', '★');
+                    star.style.animationDelay = (i * 0.25) + 's';
+                    stars.appendChild(star);
+                }
+                done.appendChild(el('p', 'aiel-arcade-donetitle', s.gamecomplete));
+                done.appendChild(stars);
+                done.appendChild(el('p', 'aiel-result-percent', result.score + '%'));
+                done.appendChild(el('p', 'aiel-result-message', result.message));
+                done.appendChild(el('p', 'aiel-result-detail', result.detail));
+                var links = el('div', 'aiel-toolbar aiel-arcade-endbar');
+                [[config.againurl, s.retrypractice, 'btn btn-secondary'], [config.reviewurl, s.reviewpracticeanswers, 'btn btn-secondary'],
+                    [config.nexturl, config.nextlabel, 'btn btn-primary btn-lg']].forEach(function(item) {
+                    var link = el('a', item[2], item[1]);
+                    link.href = item[0];
+                    links.appendChild(link);
+                });
+                done.appendChild(links);
+                if (result.stars === 3) {
+                    var confetti = el('div', 'aiel-confetti');
+                    confetti.setAttribute('aria-hidden', 'true');
+                    for (var c = 0; c < 24; c++) {
+                        var bit = el('span');
+                        bit.style.left = (c * 4.1) + '%';
+                        bit.style.animationDelay = ((c % 8) * 0.12) + 's';
+                        confetti.appendChild(bit);
+                    }
+                    done.appendChild(confetti);
+                }
+                stage.appendChild(done);
+                links.lastChild.focus();
+            }).catch(function(error) { showError(error.message); });
+        }
+
+        showGame();
+    }
+
+    return {init: init};
+});
