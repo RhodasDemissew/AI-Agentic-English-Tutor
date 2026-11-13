@@ -42,7 +42,7 @@ function aienglishlesson_delete_instance($id) {
     if (!$activity) { return false; }
     $cm = get_coursemodule_from_instance('aienglishlesson', $id);
     if ($cm) { get_file_storage()->delete_area_files(context_module::instance($cm->id)->id, 'mod_aienglishlesson'); }
-    foreach (['aiel_grades', 'aiel_quizattempts', 'aiel_progress', 'aiel_responses', 'aiel_jobs', 'aiel_versions'] as $table) { $DB->delete_records($table, ['lessonid' => $id]); }
+    foreach (['aiel_grades', 'aiel_quizattempts', 'aiel_practiceattempts', 'aiel_progress', 'aiel_responses', 'aiel_jobs', 'aiel_versions'] as $table) { $DB->delete_records($table, ['lessonid' => $id]); }
     require_once(__DIR__ . '/../../lib/gradelib.php');
     grade_update('mod/aienglishlesson', $activity->course, 'mod', 'aienglishlesson', $id, 0, null, ['deleted' => 1]);
     $DB->delete_records('aienglishlesson', ['id' => $id]);
