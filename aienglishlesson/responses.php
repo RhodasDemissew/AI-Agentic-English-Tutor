@@ -77,7 +77,8 @@ foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $whe
     $recordings = get_file_storage()->get_area_files($context->id,
         'mod_aienglishlesson', 'recording', $r->id, 'id', false);
     echo html_writer::start_tag('section', ['class' => 'aiel-practice', 'id' => 'response-' . $r->id]);
-    echo html_writer::tag('h3', s(fullname($user) . ' — ' . $lesson['sections'][$r->sectionno]['title']));
+    echo html_writer::tag('h3', html_writer::tag('span', get_string('kind_' . $lesson['sections'][$r->sectionno]['kind'],
+        'aienglishlesson'), ['class' => 'aiel-chip mr-2']) . s($lesson['sections'][$r->sectionno]['title']));
     echo html_writer::div(s(get_string('versionlabel', 'aienglishlesson', (object)['id' => $version->id, 'status' => $version->status]) . ' · ' . userdate($r->timemodified)));
     if ($speaking) {
         if (trim($r->response) !== '') {
@@ -100,15 +101,36 @@ foreach ($DB->get_records_sql('SELECT r.* FROM {aiel_responses} r WHERE ' . $whe
         echo html_writer::tag('audio', get_string('recording', 'aienglishlesson'), ['controls' => 'controls', 'preload' => 'none',
             'src' => moodle_url::make_pluginfile_url($context->id, 'mod_aienglishlesson', 'recording', $r->id, '/', $file->get_filename())->out(false)]);
     }
-    echo html_writer::div(get_string('aistatus', 'aienglishlesson', s($r->aistatus)));
+    $statuskey = 'aistatus_' . $r->aistatus;
+    $badges = html_writer::tag('span', get_string_manager()->string_exists($statuskey, 'aienglishlesson') ?
+        get_string($statuskey, 'aienglishlesson') : s($r->aistatus), ['class' => 'aiel-chip aiel-status-' . s($r->aistatus)]);
     if ($r->aistatus === 'succeeded') {
-        echo html_writer::div(get_string('provisionalscore', 'aienglishlesson', $r->aiscore));
-        echo html_writer::div(s($r->aifeedback), 'aiel-text');
+        $band = $r->aiscore >= 80 ? 'high' : ($r->aiscore >= 50 ? 'mid' : 'low');
+        $badges .= html_writer::tag('span', get_string('aiscorebadge', 'aienglishlesson', $r->aiscore),
+            ['class' => 'aiel-chip aiel-chip--score aiel-band-' . $band]);
+        if ($r->aiconfidence !== null) {
+            $badges .= html_writer::tag('span', get_string('aiconfidencebadge', 'aienglishlesson', $r->aiconfidence), ['class' => 'aiel-chip']);
+        }
     }
     if ($r->timeapproved) {
-        echo html_writer::div(get_string('approved', 'aienglishlesson'), 'badge badge-success my-2');
-        echo html_writer::div(get_string('approvedscore', 'aienglishlesson', $r->teacherscore));
-        echo html_writer::div(s($r->teacherfeedback));
+        $badges .= html_writer::tag('span', '✓ ' . get_string('approvedscore', 'aienglishlesson', $r->teacherscore),
+            ['class' => 'aiel-chip aiel-chip--good']);
+    }
+    echo html_writer::div($badges, 'aiel-badges');
+    if ($r->aistatus === 'succeeded') {
+        echo html_writer::div(s($r->aifeedback), 'aiel-text aiel-feedback');
+        if (trim((string)($r->aimistake ?? '')) !== '') {
+            echo html_writer::div(html_writer::tag('strong', get_string('focuson', 'aienglishlesson')) . ' ' . s($r->aimistake),
+                'aiel-callout aiel-callout--focus');
+        }
+        if (trim((string)($r->aitranscript ?? '')) !== '') {
+            echo html_writer::div(html_writer::tag('strong', get_string('whatweheard', 'aienglishlesson')) .
+                html_writer::div(s($r->aitranscript), 'aiel-text'), 'aiel-callout aiel-callout--heard');
+        }
+    }
+    if ($r->timeapproved && trim((string)$r->teacherfeedback) !== '') {
+        echo html_writer::div(html_writer::tag('strong', get_string('teacherfeedback', 'aienglishlesson')) . ' ' .
+            s($r->teacherfeedback), 'aiel-callout aiel-callout--teacher');
     }
     $latest = $DB->get_records('aiel_responses', ['versionid' => $r->versionid,
         'userid' => $r->userid, 'sectionno' => $r->sectionno], 'id DESC', '*', 0, 1);
