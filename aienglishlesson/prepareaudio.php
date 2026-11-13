@@ -31,10 +31,18 @@ $PAGE->requires->js_call_amd('mod_aienglishlesson/prepareaudio', 'init', [[
     'working' => get_string('audioworking', 'aienglishlesson'),
     'complete' => get_string('audiocomplete', 'aienglishlesson'),
     'failed' => get_string('audiostopped', 'aienglishlesson'),
+    'lessonurl' => $back->out(false),
 ]]);
 echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('buildaudio', 'aienglishlesson'));
-echo html_writer::div(get_string('audioworking', 'aienglishlesson'), 'alert alert-info', ['id' => 'aiel-audio-progress', 'role' => 'status']);
-echo html_writer::link($back, get_string('backtolesson', 'aienglishlesson'), ['class' => 'btn btn-secondary']);
+echo html_writer::start_div('aiel-progress-panel');
+echo html_writer::tag('h2', get_string('audiotitle', 'aienglishlesson'));
+echo html_writer::div(html_writer::div('', 'progress-bar progress-bar-striped progress-bar-animated',
+    ['id' => 'aiel-audio-bar', 'style' => 'width: 100%']), 'progress aiel-progress-bar');
+echo html_writer::div(get_string('audioworking', 'aienglishlesson'), 'aiel-progress-text',
+    ['id' => 'aiel-audio-progress', 'role' => 'status', 'aria-live' => 'polite']);
+echo html_writer::div(get_string('keeppageopen', 'aienglishlesson'), 'aiel-note');
+echo html_writer::div(html_writer::link($back, get_string('backtolesson', 'aienglishlesson'),
+    ['class' => 'btn btn-secondary', 'id' => 'aiel-audio-back', 'hidden' => 'hidden']), 'mt-3');
 echo html_writer::tag('noscript', get_string('audiojavascript', 'aienglishlesson'));
+echo html_writer::end_div();
 echo $OUTPUT->footer();
