@@ -1,0 +1,111 @@
+/* GPL-3.0-or-later. Assessed learner answers go to Moodle. */
+define(function() {
+    'use strict';
+
+    function setError(form, field, message) {
+        var speaking = !!form.querySelector('.aiel-recorder');
+        var target = field === 'recording' || (field === 'answer' && speaking && !form.querySelector('textarea').value.trim()) ?
+            form.querySelector('[data-region="recording-error"]') : form.querySelector('[data-region="answer-error"]');
+        if (!target) { target = form.querySelector('[data-region="answer-error"]'); }
+        target.textContent = message;
+        target.hidden = false;
+        var input = target.dataset.region === 'recording-error' ? form.querySelector('input[name="recording"]') :
+            form.querySelector('textarea[name="response"]');
+        if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+    }
+
+    function clearErrors(form) {
+        form.querySelectorAll('.aiel-field-error').forEach(function(item) { item.hidden = true; item.textContent = ''; });
+        form.querySelectorAll('[aria-invalid]').forEach(function(item) { item.removeAttribute('aria-invalid'); });
+    }
+
+    async function freshCard() {
+        var url = window.location.pathname + window.location.search;
+        var response = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
+        if (!response.ok || new URL(response.url).origin !== window.location.origin) { throw new Error('refresh'); }
+        var page = new DOMParser().parseFromString(await response.text(), 'text/html');
+        var card = page.querySelector('#aiel-practice');
+        if (!card) { throw new Error('refresh'); }
+        return {card: card, grades: page.querySelector('.aiel-grades')};
+    }
+
+    function installFresh(fresh) {
+        var old = document.querySelector('#aiel-practice');
+        var top = old.getBoundingClientRect().top;
+        var grades = document.querySelector('.aiel-grades');
+        if (grades && fresh.grades) { grades.replaceWith(fresh.grades); }
+        old.replaceWith(fresh.card);
+        window.scrollBy(0, fresh.card.getBoundingClientRect().top - top);
+        initAnswers();
+        require(['mod_aienglishlesson/recorder'], function(Recorder) { Recorder.init(); });
+        var saved = fresh.card.querySelector('[role="status"]');
+        if (saved) { saved.setAttribute('tabindex', '-1'); saved.focus({preventScroll: true}); }
+    }
+
+    function initAnswers() {
+        document.querySelectorAll('.aiel-response-form').forEach(function(form) {
+            if (form.dataset.initialized) { return; }
+            form.dataset.initialized = '1';
+            form.querySelectorAll('textarea, input[type="file"]').forEach(function(input) {
+                input.addEventListener(input.type === 'file' ? 'change' : 'input', function() { clearErrors(form); });
+            });
+            var pending = false;
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                if (pending) { return; }
+                clearErrors(form);
+                var answer = form.querySelector('textarea[name="response"]');
+                var image = form.querySelector('input[name="answerimage"]');
+                var recording = form.querySelector('input[name="recording"]');
+                if (recording && !recording.files.length) {
+                    setError(form, 'recording', form.dataset.recordingRequiredMessage);
+                    return;
+                }
+                if (!answer.value.trim() && !(image && image.files.length) &&
+                        (!recording || !recording.files.length)) {
+                    setError(form, recording ? 'recording' : 'answer', form.dataset.emptyMessage);
+                    return;
+                }
+                pending = true;
+                var button = form.querySelector('[type="submit"]');
+                var status = form.querySelector('[data-region="submit-status"]');
+                var oldid = document.querySelector('#aiel-practice').dataset.attemptId;
+                button.disabled = true;
+                status.textContent = form.dataset.savingMessage;
+                var body = new FormData(form);
+                body.set('ajax', '1');
+                var failureMessage = form.dataset.connectionMessage;
+                try {
+                    var result = await fetch(form.getAttribute('action'), {method: 'POST', credentials: 'same-origin', body: body});
+                    if (!result.ok && result.status !== 422) { failureMessage = form.dataset.problemMessage; }
+                    var contenttype = result.headers.get('Content-Type') || '';
+                    if (!contenttype.includes('application/json')) { throw new Error('response'); }
+                    var data = await result.json();
+                    if (result.status === 422 && !data.ok) {
+                        setError(form, data.field, data.message);
+                        status.textContent = '';
+                        return;
+                    }
+                    if (!result.ok || !data.ok) { throw new Error('response'); }
+                    installFresh(await freshCard());
+                } catch (error) {
+                    try {
+                        var fresh = await freshCard();
+                        if (fresh.card.dataset.attemptId && fresh.card.dataset.attemptId !== oldid) {
+                            installFresh(fresh);
+                        } else {
+                            status.textContent = failureMessage;
+                        }
+                    } catch (refresherror) {
+                        status.textContent = failureMessage;
+                    }
+                } finally {
+                    pending = false;
+                    button.disabled = false;
+                }
+            });
+        });
+    }
+
+    return {init: initAnswers};
+});

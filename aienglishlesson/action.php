@@ -11,16 +11,11 @@ require_capability('mod/aienglishlesson:view', $context);
 if (!data_submitted()) { throw new moodle_exception('invalidrequest'); }
 require_sesskey();
 $back = new moodle_url('/mod/aienglishlesson/view.php', ['id' => $id]);
-if ($action === 'generate') {
+if ($action === 'generate' || $action === 'resume') {
     require_capability('mod/aienglishlesson:manage', $context);
     $jobid = \mod_aienglishlesson\local\jobs::queue((int)$cm->instance);
     if (\mod_aienglishlesson\local\jobs::direct()) {
-        \core\session\manager::write_close();
-        \core_php_time_limit::raise(300);
-        try { \mod_aienglishlesson\local\jobs::run($jobid); }
-        catch (moodle_exception $e) { if ($e->errorcode !== 'retrying') { throw $e; } }
-        $drafts = $DB->get_records('aiel_versions', ['lessonid' => $cm->instance, 'status' => 'draft'], 'id DESC', '*', 0, 1);
-        if ($drafts) { $back->param('version', reset($drafts)->id); }
+        redirect(new moodle_url('/mod/aienglishlesson/preparegeneration.php', ['id' => $id, 'job' => $jobid]));
     }
 } else if ($action === 'uploadaudio') {
     require_capability('mod/aienglishlesson:manage', $context);
@@ -60,11 +55,44 @@ if ($action === 'generate') {
     $section = required_param('section', PARAM_INT);
     $v = $DB->get_record('aiel_versions', ['id' => $versionid, 'lessonid' => $cm->instance, 'status' => 'published'], '*', MUST_EXIST);
     if ($action === 'submit') {
-        \mod_aienglishlesson\local\responses::save($v, $section, $USER->id, required_param('response', PARAM_RAW_TRIMMED), $_FILES['recording'] ?? null);
+        $ajax = optional_param('ajax', 0, PARAM_BOOL);
+        $answer = required_param('response', PARAM_RAW_TRIMMED);
+        try {
+            $attemptid = \mod_aienglishlesson\local\responses::save($v, $section, $USER->id,
+                $answer, $_FILES['recording'] ?? null, $_FILES['answerimage'] ?? null);
+        } catch (moodle_exception $e) {
+            $errorcode = $e->errorcode ?? '';
+            if (!in_array($errorcode, ['emptyresponse', 'recordingrequired', 'recordingerror',
+                    'speakingimageerror', 'imageerror'], true)) { throw $e; }
+            if ($ajax) {
+                http_response_code(422);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'field' => in_array($errorcode,
+                    ['recordingrequired', 'recordingerror', 'speakingimageerror'], true) ? 'recording' : 'answer',
+                    'message' => get_string($errorcode, 'aienglishlesson')]);
+                exit;
+            }
+            $SESSION->aiel_formerror = ['version' => $versionid, 'section' => $section,
+                'code' => $errorcode, 'response' => $answer];
+            $back->params(['section' => $section, 'version' => $versionid]);
+            $back->set_anchor('aiel-practice');
+            redirect($back);
+        }
+        if (\mod_aienglishlesson\local\assessment::enabled()) {
+            \core\session\manager::write_close();
+            \core_php_time_limit::raise(180);
+            \mod_aienglishlesson\local\assessment::evaluate($attemptid);
+        }
+        if ($ajax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true, 'attemptid' => $attemptid]);
+            exit;
+        }
     } else {
-        \mod_aienglishlesson\local\responses::delete($context, ['versionid' => $versionid, 'userid' => $USER->id, 'sectionno' => $section]);
+        \mod_aienglishlesson\local\assessment::clear_latest($context, $versionid, $USER->id, $section);
     }
     $back->params(['section' => $section, 'version' => $versionid]);
+    $back->set_anchor('aiel-practice');
 } else if ($action === 'progress') {
     if (isguestuser() || !is_enrolled($context, $USER, '', true)) { throw new required_capability_exception($context, 'mod/aienglishlesson:view', 'nopermissions', ''); }
     $versionid = required_param('version', PARAM_INT);
@@ -80,6 +108,15 @@ if ($action === 'generate') {
             $DB->insert_record('aiel_progress', (object)($record + ['lessonid' => $cm->instance, 'timemodified' => time()]));
         }
     } finally { $lock->release(); }
+    if ($section === count($content['sections']) - 1) {
+        // After the recap: practice games first (when the lesson has them), then the quiz.
+        if (!empty($content['activities'])) {
+            redirect(new moodle_url('/mod/aienglishlesson/practice.php', ['id' => $id, 'version' => $versionid]));
+        }
+        if (isset($content['quiz'])) {
+            redirect(new moodle_url('/mod/aienglishlesson/quiz.php', ['id' => $id, 'version' => $versionid]));
+        }
+    }
     $back->param('section', min($section + 1, count($content['sections']) - 1));
 } else { throw new moodle_exception('invalidrequest'); }
 redirect($back);

@@ -17,12 +17,12 @@ if (data_submitted()) {
     if (!in_array($stage, [1, 2, 3, 4], true)) { throw new moodle_exception('invalidrequest'); }
     $activity = $DB->get_record('aienglishlesson', ['id' => $cm->instance], '*', MUST_EXIST);
     $files = get_file_storage()->get_area_files($context->id, 'mod_aienglishlesson', 'source', 0, 'id', false);
-    if (count($files) !== 1) { throw new moodle_exception('missingpdf', 'aienglishlesson'); }
+    if (!$files || count($files) > 5) { throw new moodle_exception('invalidsources', 'aienglishlesson'); }
     \core\session\manager::write_close();
     \core_php_time_limit::raise(300);
     $start = microtime(true);
     try {
-        (new \mod_aienglishlesson\local\gemini())->diagnose($stage, $activity, reset($files));
+        (new \mod_aienglishlesson\local\gemini())->diagnose($stage, $activity, array_values($files));
         $notice = get_string('diagnosticstagepass', 'aienglishlesson', $stage);
         $type = 'success';
     } catch (\Throwable $e) {

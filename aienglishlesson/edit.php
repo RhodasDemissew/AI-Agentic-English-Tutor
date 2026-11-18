@@ -23,26 +23,71 @@ if ($data = $form->get_data()) {
     try {
         $current = $DB->get_record('aiel_versions', ['id' => $versionid, 'status' => 'draft'], '*', MUST_EXIST);
         if ($current->timemodified != $data->modified) { throw new moodle_exception('editconflict', 'aienglishlesson'); }
+        $originalscripts = array_column($content['sections'], 'audioscript');
         $content['title'] = $data->title;
         $content['focus'] = $data->focus;
         foreach ($content['sections'] as $i => &$section) {
+            $assessed = in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true);
             $section['origin'] = $data->{'origin_' . $i};
-            foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) { $section[$key] = $data->{$key . '_' . $i}; }
+            foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
+                if (!$assessed && in_array($key, ['practice', 'answer', 'feedback', 'hint'], true)) { continue; }
+                $section[$key] = $data->{$key . '_' . $i};
+            }
             foreach ($section['cards'] as $j => &$card) {
                 foreach (['term', 'meaning', 'example'] as $key) { $card[$key] = $data->{'card_' . $i . '_' . $j . '_' . $key}; }
             }
             unset($card);
         }
         unset($section);
-        $current->content = json_encode(\mod_aienglishlesson\local\lesson::validate(json_encode($content)));
+        if (isset($content['quiz'])) {
+            foreach ($content['quiz'] as $i => &$question) {
+                $question['question'] = $data->{'quiz_question_' . $i};
+                foreach ($question['choices'] as $j => &$choice) { $choice = $data->{'quiz_choice_' . $i . '_' . $j}; }
+                unset($choice);
+                $question['correct'] = (int)$data->{'quiz_correct_' . $i};
+                $question['explanation'] = $data->{'quiz_explanation_' . $i};
+            }
+            unset($question);
+        }
+        if (!empty($content['activities'])) {
+            $lines = static function($text): array {
+                return array_values(array_filter(array_map('trim', preg_split('/\R/u', (string)$text)), 'strlen'));
+            };
+            $edited = [];
+            foreach ($content['activities'] as $i => $activity) {
+                $item = ['type' => $activity['type'], 'prompt' => $data->{'act_prompt_' . $i} ?? ''];
+                if ($activity['type'] === 'order') {
+                    $item['items'] = $lines($data->{'act_words_' . $i} ?? '');
+                } else if ($activity['type'] === 'match') {
+                    $item['pairs'] = array_map(static function($line) {
+                        $parts = array_map('trim', explode('|', $line, 2));
+                        return ['left' => $parts[0] ?? '', 'right' => $parts[1] ?? ''];
+                    }, $lines($data->{'act_pairs_' . $i} ?? ''));
+                } else {
+                    $item['sentence'] = $data->{'act_sentence_' . $i} ?? '';
+                    $item['choices'] = $lines($data->{'act_choices_' . $i} ?? '');
+                    $item['correct'] = (int)($data->{'act_correct_' . $i} ?? 0);
+                }
+                $edited[] = $item;
+            }
+            // Games made incomplete by an edit are dropped; with fewer than three left, the lesson has no games.
+            $cleaned = \mod_aienglishlesson\local\lesson::clean_activities($edited);
+            if ($cleaned === null) { unset($content['activities']); }
+            else { $content['activities'] = $cleaned; }
+        }
+        $current->content =json_encode(\mod_aienglishlesson\local\lesson::validate(json_encode($content)));
         $current->timemodified = max(time(), $current->timemodified + 1);
-        $current->audiostatus = 'none';
+        $audiochanged = $originalscripts !== array_column($content['sections'], 'audioscript');
+        if ($audiochanged) { $current->audiostatus = 'none'; }
         $DB->update_record('aiel_versions', $current);
-        get_file_storage()->delete_area_files($context->id, 'mod_aienglishlesson', 'audio', $versionid);
+        if ($audiochanged) {
+            get_file_storage()->delete_area_files($context->id, 'mod_aienglishlesson', 'audio', $versionid);
+        }
     } finally { $lock->release(); }
     redirect($back);
 }
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('editdraft', 'aienglishlesson'));
+echo $OUTPUT->notification(get_string('exactanswerhelp', 'aienglishlesson'), 'info');
 $form->display();
 echo $OUTPUT->footer();

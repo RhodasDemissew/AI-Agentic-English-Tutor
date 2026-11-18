@@ -26,7 +26,8 @@ class Client:
         if file:
             boundary='----AIEL'+uuid.uuid4().hex; body=b''
             for k,v in data.items(): body+=('--'+boundary+'\r\nContent-Disposition: form-data; name="'+k+'"\r\n\r\n'+str(v)+'\r\n').encode()
-            body+=('--'+boundary+'\r\nContent-Disposition: form-data; name="recording"; filename="'+file[0]+'"\r\nContent-Type: '+file[1]+'\r\n\r\n').encode()+file[2]+b'\r\n'+('--'+boundary+'--\r\n').encode()
+            field=file[3] if len(file)>3 else 'recording'
+            body+=('--'+boundary+'\r\nContent-Disposition: form-data; name="'+field+'"; filename="'+file[0]+'"\r\nContent-Type: '+file[1]+'\r\n\r\n').encode()+file[2]+b'\r\n'+('--'+boundary+'--\r\n').encode()
             headers['Content-Type']='multipart/form-data; boundary='+boundary
         else: body=urllib.parse.urlencode(data).encode() if data is not None else None
         try: r=self.opener.open(urllib.request.Request(BASE+path,data=body,headers=headers),timeout=60)
@@ -57,9 +58,23 @@ anonymous=Client();check(anonymous.get(audio,raw=True)[:4]!=b'RIFF','Anonymous l
 draftaudio=audio.replace('/audio/'+str(version)+'/', '/audio/'+str(draft)+'/')
 check(student.get(draftaudio,raw=True)[:4]!=b'RIFF','Draft audio inaccessible to students')
 page=student.get(view+'&section=7');check('data-action="record"' in page and 'name="recording"' in page,'Speaking recorder and upload fallback render')
+check('name="answerimage"' not in page and 'Speaking notes (optional' in page,'Speaking notes are optional and image upload is hidden')
 buffer=io.BytesIO()
 with wave.open(buffer,'wb') as w: w.setnchannels(1);w.setsampwidth(2);w.setframerate(8000);w.writeframes(b'\x00\x00'*8000)
 payload.update(section=7,response='FICTIONAL-SPEAKING-NOTES')
+page=student.get('/mod/aienglishlesson/action.php',payload)
+check('Record your voice or choose an audio file' in page and 'Your response is saved' not in page,
+      'Speaking notes alone are rejected')
+page=student.get('/mod/aienglishlesson/action.php',payload,file=('answer.png','image/png',b'image-only','answerimage'))
+check('Record your voice or choose an audio file' in page,'Speaking image alone is rejected')
+payload.update(response='')
+page=student.get('/mod/aienglishlesson/action.php',payload,file=('empty.wav','audio/wav',b''))
+check('Choose a valid WAV' in page,'Empty Speaking recording is rejected')
+page=student.get('/mod/aienglishlesson/action.php',payload,file=('large.wav','audio/wav',b'0'*(8*1024*1024+1)))
+check('Choose a valid WAV' in page,'Oversized Speaking recording is rejected')
+page=student.get('/mod/aienglishlesson/action.php',payload,file=('practice.wav','audio/wav',buffer.getvalue()))
+check('Your response is saved' in page and '/recording/' in page,'Speaking recording without notes is saved')
+payload.update(response='FICTIONAL-SPEAKING-NOTES')
 page=student.get('/mod/aienglishlesson/action.php',payload,file=('practice.wav','audio/wav',buffer.getvalue()))
 check('Your response is saved' in page and '/recording/' in page,'Speaking upload saved with notes')
 recording=re.search(r'src="([^"]+/recording/[^"]+)"',page).group(1).replace(BASE,'')

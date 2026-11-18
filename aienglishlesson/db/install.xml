@@ -1,2 +1,183 @@
-<?xml version='1.0' encoding='utf-8'?>
-<XMLDB PATH="mod/aienglishlesson/db" VERSION="20261104" COMMENT="AI English Lessons tables"><TABLES><TABLE NAME="aienglishlesson" COMMENT="aienglishlesson"><FIELDS><FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" /><FIELD NAME="course" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="name" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" /><FIELD NAME="intro" TYPE="text" NOTNULL="true" SEQUENCE="false" /><FIELD NAME="introformat" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="gradeband" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="adult" /><FIELD NAME="proficiency" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="unspecified" /><FIELD NAME="topic" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" /><FIELD NAME="pagerange" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" /><FIELD NAME="duration" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="30" /><FIELD NAME="instructions" TYPE="text" NOTNULL="true" SEQUENCE="false" /><FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /></FIELDS><KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id" /></KEYS><INDEXES><INDEX NAME="course" FIELDS="course" UNIQUE="false" /></INDEXES></TABLE><TABLE NAME="aiel_versions" COMMENT="aiel_versions"><FIELDS><FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" /><FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="status" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="draft" /><FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false" /><FIELD NAME="audiostatus" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="none" /><FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /></FIELDS><KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id" /></KEYS><INDEXES><INDEX NAME="lessonstatus" FIELDS="lessonid, status" UNIQUE="false" /></INDEXES></TABLE><TABLE NAME="aiel_jobs" COMMENT="aiel_jobs"><FIELDS><FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" /><FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="status" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="queued" /><FIELD NAME="attempts" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="diagnostic" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" /><FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /></FIELDS><KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id" /></KEYS><INDEXES><INDEX NAME="lessonstatus" FIELDS="lessonid, status" UNIQUE="false" /></INDEXES></TABLE><TABLE NAME="aiel_progress" COMMENT="aiel_progress"><FIELDS><FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" /><FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="versionid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="userid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="sectionno" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /></FIELDS><KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id" /></KEYS><INDEXES><INDEX NAME="usersection" FIELDS="versionid, userid, sectionno" UNIQUE="true" /><INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false" /></INDEXES></TABLE><TABLE NAME="aiel_usage" COMMENT="aiel_usage"><FIELDS><FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" /><FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /></FIELDS><KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id" /></KEYS><INDEXES><INDEX NAME="timecreated" FIELDS="timecreated" UNIQUE="false" /></INDEXES></TABLE><TABLE NAME="aiel_responses" COMMENT="aiel_responses"><FIELDS><FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" /><FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="versionid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="userid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="sectionno" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /><FIELD NAME="response" TYPE="text" NOTNULL="true" SEQUENCE="false" /><FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0" /></FIELDS><KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id" /></KEYS><INDEXES><INDEX NAME="usersection" FIELDS="versionid, userid, sectionno" UNIQUE="true" /><INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false" /></INDEXES></TABLE></TABLES></XMLDB>
+<?xml version="1.0" encoding="utf-8"?>
+<XMLDB PATH="mod/aienglishlesson/db" VERSION="20261110" COMMENT="AI English Lessons tables">
+  <TABLES>
+    <TABLE NAME="aienglishlesson" COMMENT="aienglishlesson">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="course" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="name" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255"/>
+        <FIELD NAME="intro" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="introformat" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="gradeband" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="adult"/>
+        <FIELD NAME="proficiency" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="unspecified"/>
+        <FIELD NAME="topic" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255"/>
+        <FIELD NAME="pagerange" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255"/>
+        <FIELD NAME="duration" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="60"/>
+        <FIELD NAME="instructions" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course" FIELDS="course" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_versions" COMMENT="aiel_versions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="status" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="draft"/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="audiostatus" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="none"/>
+        <FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="rubrics" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="lessonstatus" FIELDS="lessonid, status" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_jobs" COMMENT="aiel_jobs">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="status" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255" DEFAULT="queued"/>
+        <FIELD NAME="attempts" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="stage" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="partial" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="diagnostic" TYPE="char" NOTNULL="true" SEQUENCE="false" LENGTH="255"/>
+        <FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="lessonstatus" FIELDS="lessonid, status" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_progress" COMMENT="aiel_progress">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="versionid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="userid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="sectionno" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="usersection" FIELDS="versionid, userid, sectionno" UNIQUE="true"/>
+        <INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_usage" COMMENT="aiel_usage">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="timecreated" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="purpose" TYPE="char" NOTNULL="false" SEQUENCE="false" LENGTH="20"/>
+        <FIELD NAME="model" TYPE="char" NOTNULL="false" SEQUENCE="false" LENGTH="100"/>
+        <FIELD NAME="status" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="inputtokens" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="outputtokens" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="userid" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="lessonid" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="timecreated" FIELDS="timecreated" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_responses" COMMENT="aiel_responses">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="versionid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="userid" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="sectionno" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="response" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" NOTNULL="true" SEQUENCE="false" LENGTH="10" DEFAULT="0"/>
+        <FIELD NAME="aistatus" TYPE="char" NOTNULL="false" SEQUENCE="false" LENGTH="20" DEFAULT="none"/>
+        <FIELD NAME="aiscore" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="aifeedback" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="aiconfidence" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="teacherscore" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="teacherfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="approvedby" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="timeapproved" TYPE="int" NOTNULL="false" SEQUENCE="false" LENGTH="10"/>
+        <FIELD NAME="aitranscript" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="aimistake" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="usersection" FIELDS="versionid, userid, sectionno" UNIQUE="false"/>
+        <INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false"/>
+        <INDEX NAME="approval" FIELDS="versionid, userid, timeapproved" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_grades" COMMENT="Latest released grade per learner and activity">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="versionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="grade" TYPE="number" LENGTH="5" NOTNULL="true" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="skillgrade" TYPE="number" LENGTH="5" NOTNULL="false" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="quizgrade" TYPE="number" LENGTH="5" NOTNULL="false" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="practicegrade" TYPE="number" LENGTH="5" NOTNULL="false" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="true"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_quizattempts" COMMENT="Completed quiz attempts">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="versionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="attemptno" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="answers" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="5" NOTNULL="true" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="attempt" FIELDS="versionid, userid, attemptno" UNIQUE="true"/>
+        <INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="aiel_practiceattempts" COMMENT="Completed practice game attempts">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="lessonid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="versionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="attemptno" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="answers" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="5" NOTNULL="true" SEQUENCE="false" DECIMALS="2"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="attempt" FIELDS="versionid, userid, attemptno" UNIQUE="true"/>
+        <INDEX NAME="lessonuser" FIELDS="lessonid, userid" UNIQUE="false"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

@@ -15,9 +15,9 @@ class audio {
     }
     public static function queue(int $versionid): void {
         global $DB;
-        $background = !jobs::direct() && self::provider() !== 'upload';
-        $DB->set_field('aiel_versions', 'audiostatus', $background ? 'queued' : 'none', ['id' => $versionid]);
-        if (!$background) { return; }
+        $enabled = self::provider() !== 'upload';
+        $DB->set_field('aiel_versions', 'audiostatus', $enabled ? 'queued' : 'none', ['id' => $versionid]);
+        if (!$enabled || jobs::direct()) { return; }
         $task = new \mod_aienglishlesson\task\render_audio();
         $task->set_custom_data(['versionid' => $versionid]);
         \core\task\manager::queue_adhoc_task($task, true);
@@ -51,7 +51,7 @@ class audio {
                 $script = $directory . '/script' . $i . '.txt';
                 $wav = $directory . '/section' . $i . '.wav';
                 if ($mode === 'gemini') {
-                    $bytes = $synthesizer ? $synthesizer($section['audioscript']) : (new gemini())->speech($section['audioscript']);
+                    $bytes = $synthesizer ? $synthesizer($section['audioscript']) : (new gemini())->set_usage_context((int)$version->lessonid)->speech($section['audioscript']);
                     file_put_contents($wav, $bytes);
                     $created[$i] = $wav;
                     // Persist each successful section so retry does not repeat a cloud request.
@@ -59,7 +59,7 @@ class audio {
                     continue;
                 }
                 file_put_contents($script, $section['audioscript']);
-                $process = proc_open([$binary, '-b', '1', '-v', 'en-us', '-s', '140', '-f', $script, '-w', $wav],
+                $process = proc_open([$binary, '-b', '1', '-v', 'en-us', '-s', '120', '-f', $script, '-w', $wav],
                     [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
                 if (!is_resource($process)) { throw new \RuntimeException('speech unavailable'); }
                 $start = time();
@@ -82,20 +82,21 @@ class audio {
             }
             $DB->set_field('aiel_versions', 'audiostatus', $remaining ? 'pending' : 'ready', ['id' => $versionid]);
         } catch (\Throwable $e) {
-            $code = $e instanceof provider_error ? $e->getMessage() : 'internal';
+            $code = $e instanceof provider_error && preg_match('/^[a-z0-9]{1,40}$/D', $e->getMessage()) ?
+                $e->getMessage() : 'internal';
             $DB->set_field('aiel_versions', 'audiostatus', 'failed:' . $code, ['id' => $versionid]);
         } finally { $lock->release(); }
     }
     public static function ready(\stdClass $version, \context_module $context): bool {
         $data = lesson::validate($version->content);
-        $requireaudio = (bool)get_config('aienglishlesson', 'requireaudio');
         foreach ($data['sections'] as $i => $section) {
             if (in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing']) && trim($section['practice'] ?? '') === '') {
                 return false;
             }
-            if ($section['kind'] === 'listening') {
-                if (empty($section['audioscript'])) { return false; }
-                if ($requireaudio && !self::file($context, $version->id, $i)) { return false; }
+            if ($section['kind'] === 'listening' && empty($section['audioscript'])) { return false; }
+            if (in_array($section['kind'], ['listening', 'speaking'], true) &&
+                    !empty($section['audioscript']) && !self::file($context, $version->id, $i)) {
+                return false;
             }
         }
         return true;

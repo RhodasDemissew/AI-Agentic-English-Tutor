@@ -14,11 +14,13 @@ class edit extends \moodleform {
             ['reading' => 'Reading', 'listening' => 'Listening', 'speaking' => 'Speaking', 'writing' => 'Writing']);
         $f->setDefault('focus', $this->_customdata['content']['focus']);
         foreach ($this->_customdata['content']['sections'] as $i => $section) {
+            $assessed = in_array($section['kind'], ['reading', 'listening', 'speaking', 'writing'], true);
             $f->addElement('header', 'section' . $i, $section['title']);
             $f->addElement('select', 'origin_' . $i, get_string('origin', 'aienglishlesson'),
                 ['source' => 'Source', 'generated' => 'Generated', 'mixed' => 'Mixed']);
             $f->setDefault('origin_' . $i, $section['origin']);
             foreach (['title', 'body', 'example', 'practice', 'answer', 'feedback', 'hint', 'simpler', 'extraexample', 'audioscript'] as $key) {
+                if (!$assessed && in_array($key, ['practice', 'answer', 'feedback', 'hint'], true)) { continue; }
                 $f->addElement('textarea', $key . '_' . $i, get_string($key, 'aienglishlesson'), ['rows' => $key === 'body' ? 6 : 3, 'cols' => 80]);
                 $f->setType($key . '_' . $i, PARAM_TEXT);
                 $f->setDefault($key . '_' . $i, $section[$key] ?? '');
@@ -28,6 +30,61 @@ class edit extends \moodleform {
                     $name = 'card_' . $i . '_' . $j . '_' . $key;
                     $f->addElement('text', $name, get_string($key, 'aienglishlesson'), ['size' => 70]);
                     $f->setType($name, PARAM_TEXT); $f->setDefault($name, $card[$key]);
+                }
+            }
+        }
+        if (isset($this->_customdata['content']['quiz'])) {
+            foreach ($this->_customdata['content']['quiz'] as $i => $question) {
+                $f->addElement('header', 'quiz' . $i, get_string('quizquestion', 'aienglishlesson', $i + 1));
+                $name = 'quiz_question_' . $i;
+                $f->addElement('textarea', $name, get_string('question', 'aienglishlesson'), ['rows' => 2, 'cols' => 80]);
+                $f->setType($name, PARAM_TEXT); $f->setDefault($name, $question['question']);
+                foreach ($question['choices'] as $j => $choice) {
+                    $name = 'quiz_choice_' . $i . '_' . $j;
+                    $f->addElement('text', $name, get_string('choice', 'aienglishlesson', $j + 1), ['size' => 80]);
+                    $f->setType($name, PARAM_TEXT); $f->setDefault($name, $choice);
+                }
+                $name = 'quiz_correct_' . $i;
+                $f->addElement('select', $name, get_string('correctchoice', 'aienglishlesson'),
+                    [0 => '1', 1 => '2', 2 => '3', 3 => '4']);
+                $f->setDefault($name, $question['correct']);
+                $name = 'quiz_explanation_' . $i;
+                $f->addElement('textarea', $name, get_string('explanation', 'aienglishlesson'), ['rows' => 2, 'cols' => 80]);
+                $f->setType($name, PARAM_TEXT); $f->setDefault($name, $question['explanation']);
+            }
+        }
+        if (!empty($this->_customdata['content']['activities'])) {
+            $types = ['order' => get_string('gameorder', 'aienglishlesson'), 'match' => get_string('gamematch', 'aienglishlesson'),
+                'gap' => get_string('gamegap', 'aienglishlesson')];
+            foreach ($this->_customdata['content']['activities'] as $i => $activity) {
+                $f->addElement('header', 'activity' . $i, get_string('activityheader', 'aienglishlesson', $i + 1));
+                if ($i === 0) {
+                    $f->addElement('static', 'activitieshelp', '', get_string('activitieshelp', 'aienglishlesson'));
+                }
+                $f->addElement('static', 'act_type_' . $i, get_string('gametype', 'aienglishlesson'), $types[$activity['type']]);
+                $f->addElement('text', 'act_prompt_' . $i, get_string('gameprompt', 'aienglishlesson'), ['size' => 80]);
+                $f->setType('act_prompt_' . $i, PARAM_TEXT);
+                $f->setDefault('act_prompt_' . $i, $activity['prompt']);
+                if ($activity['type'] === 'order') {
+                    $f->addElement('textarea', 'act_words_' . $i, get_string('gamewords', 'aienglishlesson'), ['rows' => 5, 'cols' => 60]);
+                    $f->setType('act_words_' . $i, PARAM_TEXT);
+                    $f->setDefault('act_words_' . $i, implode("\n", $activity['items']));
+                } else if ($activity['type'] === 'match') {
+                    $f->addElement('textarea', 'act_pairs_' . $i, get_string('gamepairs', 'aienglishlesson'), ['rows' => 5, 'cols' => 80]);
+                    $f->setType('act_pairs_' . $i, PARAM_TEXT);
+                    $f->setDefault('act_pairs_' . $i, implode("\n", array_map(static function($pair) {
+                        return $pair['left'] . ' | ' . $pair['right'];
+                    }, $activity['pairs'])));
+                } else {
+                    $f->addElement('text', 'act_sentence_' . $i, get_string('gamesentence', 'aienglishlesson'), ['size' => 80]);
+                    $f->setType('act_sentence_' . $i, PARAM_TEXT);
+                    $f->setDefault('act_sentence_' . $i, $activity['sentence']);
+                    $f->addElement('textarea', 'act_choices_' . $i, get_string('gamechoices', 'aienglishlesson'), ['rows' => 4, 'cols' => 60]);
+                    $f->setType('act_choices_' . $i, PARAM_TEXT);
+                    $f->setDefault('act_choices_' . $i, implode("\n", $activity['choices']));
+                    $f->addElement('select', 'act_correct_' . $i, get_string('gamecorrect', 'aienglishlesson'),
+                        [0 => '1', 1 => '2', 2 => '3', 3 => '4']);
+                    $f->setDefault('act_correct_' . $i, $activity['correct']);
                 }
             }
         }
